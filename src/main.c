@@ -1,36 +1,18 @@
 #include <stdio.h>
 
-#include "util.h"
 #include "log.h"
-#include "test.h"
+#include "lex.h"
 
-TEST(suite);
+#define TOK_INFO 0
 
 int main(void) {
-    TEST_RUN(suite);
+    char* src = "void main() {\nputchar(42);\n}";
+    struct token tok = {0};
+    struct lexer lexer = lexer_init(src);
+
+    while ((tok = lexer_next(&lexer)).type != TT_EOF) {
+        LOG(TOK_INFO, TOK_FMT, TOK_ARG(tok));
+    }
+
     return 0;
-}
-
-TEST(adder) {
-    TEST_EXPECT(21 + 21 == 42);
-}
-
-TEST(failer) {
-    TEST_EXPECT(9 + 10 == 21);
-}
-
-TEST(passer) {
-    TEST_EXPECT(1);
-}
-
-TEST(suite) {
-    bool dummy = true;
-
-    dummy = TEST_RUN(adder) & dummy;
-
-    dummy = TEST_RUN(failer) & dummy;
-
-    dummy = TEST_RUN(passer) & dummy;
-
-    TEST_EXPECT(dummy);
 }
