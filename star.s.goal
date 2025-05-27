@@ -1,0 +1,13 @@
+format      ELF64
+
+
+section     ".text" executable
+
+extrn   putchar
+
+public      main
+main:
+    mov     rdi, 42
+    call    putchar
+    mov     rax, 0
+    ret

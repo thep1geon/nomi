@@ -2,6 +2,7 @@
 #define __UTIL_H
 
 #include <stdint.h>
+#include <stddef.h>
 #include <stdbool.h>
 
 #define _STR(X) #X
@@ -10,6 +11,10 @@
 #define ARR_LEN(xs) (sizeof((xs))/sizeof((*xs)))
 
 #define PRINT_FILE_LOC(f) fprintf((f), "%s:%d: ", __FILE__, __LINE__)
+
+#define CONTAINER_OF(ptr, type, member) ({                      \
+        const typeof( ((type*)0)->member )* __mptr = (ptr);     \
+        (type*)( (char*)__mptr - offsetof(type,member) );})
 
 // TODO: come up with a prefix for these so they don't conflict with other libraries
 typedef uint8_t  u8;
@@ -24,5 +29,7 @@ typedef int64_t i64;
 
 typedef float f32;
 typedef double f64;
+
+typedef size_t usize;
 
 #endif  //__UTIL_H
