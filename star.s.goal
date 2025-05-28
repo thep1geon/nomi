@@ -1,13 +1,9 @@
-format      ELF64
-
-
-section     ".text" executable
-
-extrn   putchar
-
-public      main
+	.text
+	.globl  main
 main:
-    mov     rdi, 42
-    call    putchar
-    mov     rax, 0
-    ret
+	pushq   %rbp
+	movq	%rsp, %rbp
+	movl	$42, %edi
+	call    putchar
+	popq	%rbp
+	ret
