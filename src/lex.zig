@@ -21,6 +21,10 @@ pub const Token = struct {
             .str = str,
         };
     }
+
+    pub fn pprint(self: *const Token) void {
+        std.debug.print("{} : {s}\n", .{self.kind, self.str});
+    }
 };
 
 pub const Lexer = struct {
@@ -39,7 +43,7 @@ pub const Lexer = struct {
     }
 
     pub fn next(self: *Self) ?Token {
-        if (self.ptr >= self.src.len) {
+        if (!self.is_bound()) {
             return null;
         }
 
@@ -47,46 +51,46 @@ pub const Lexer = struct {
 
         self.start = self.ptr;
 
-        switch (self.src[self.ptr]) {
+        return swi: switch (self.src[self.ptr]) {
             '0' ... '9' => {
                 self.ptr += 1;
 
-                while (self.ptr < self.src.len and std.ascii.isDigit(self.src[self.ptr])) {
+                while (self.is_bound() and std.ascii.isDigit(self.src[self.ptr])) {
                     self.ptr += 1;
                 }
 
-                return self.make_token(.integer);
+                break :swi self.make_token(.integer);
             },
 
             '(' => {
                 self.ptr += 1;
-                return self.make_token(.lparen);
+                break :swi self.make_token(.lparen);
             },
 
             ')' => {
                 self.ptr += 1;
-                return self.make_token(.rparen);
+                break :swi self.make_token(.rparen);
             },
 
             '{' => {
                 self.ptr += 1;
-                return self.make_token(.lcurly);
+                break :swi self.make_token(.lcurly);
             },
 
             '}' => {
                 self.ptr += 1;
-                return self.make_token(.rcurly);
+                break :swi self.make_token(.rcurly);
             },
 
             ';' => {
                 self.ptr += 1;
-                return self.make_token(.semicolon);
+                break :swi self.make_token(.semicolon);
             },
 
             'a' ... 'z', 'A' ... 'Z' => {
                 self.ptr += 1;
 
-                while (self.ptr < self.src.len and std.ascii.isAlphanumeric(self.src[self.ptr])) {
+                while (self.is_bound() and std.ascii.isAlphanumeric(self.src[self.ptr])) {
                     self.ptr += 1;
                 }
 
@@ -94,17 +98,41 @@ pub const Lexer = struct {
                     return self.make_token(._void);
                 }
 
-                return self.make_token(.ident);
+                break :swi self.make_token(.ident);
             },
 
             else => {
                 std.debug.print("Unknown character!\n", .{});
-                return null;
+                break :swi null;
             },
-        }
+        };
     }
 
-    fn skip_whitespace(self: *Self) void {
+    pub fn peek(self: *Self) ?Token {
+        const ptr = self.ptr;
+        defer self.ptr = ptr;
+
+        return self.next();
+    }
+
+    pub fn peekn(self: *Self, n: usize) ?Token {
+        const ptr = self.ptr;
+        defer self.ptr = ptr;
+
+        var tok: ?Token = null;
+
+        for (0..n) |_| {
+            tok = self.next();
+
+            if (tok == null) {
+                return null;
+            }
+        }
+
+        return tok;
+    }
+
+    inline fn skip_whitespace(self: *Self) void {
         while (std.ascii.isWhitespace(self.src[self.ptr])) {
             self.ptr += 1;
         }
@@ -116,5 +144,9 @@ pub const Lexer = struct {
 
     inline fn make_token(self: *Self, kind: Token.TokenKind) Token {
         return Token.init(kind, self.get_token_str());
+    }
+
+    inline fn is_bound(self: *const Self) bool {
+        return self.ptr < self.src.len;
     }
 };

@@ -1,12 +1,17 @@
 const std = @import("std");
+
 const lex = @import("lex.zig");
+const Lexer = lex.Lexer;
 
 pub fn main() !void {
+    // TODO: Handle reading files into memory
     const src = "void main() {\n    putchar(42);\n}";
 
-    var lexer = lex.Lexer.init(src);
+    var lexer = Lexer.init(src);
 
     while (lexer.next()) |tok| {
-        std.debug.print("{} : {s}\n", .{tok.kind, tok.str});
+        tok.pprint();
     }
 }
+
+// TODO: Start parsing

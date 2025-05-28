@@ -1,7 +1,7 @@
 .{
     .name = .compiler,
 
-    .version = "0.0.0",
+    .version = "0.1.0",
 
     .fingerprint = 0xaa62bd499dd85af0, // Changing this has security and trust implications.
 
