@@ -43,13 +43,13 @@ pub const Lexer = struct {
     }
 
     pub fn next(self: *Self) ?Token {
-        if (!self.is_bound()) {
-            return null;
-        }
-
         self.skip_whitespace();
 
         self.start = self.ptr;
+
+        if (!self.is_bound()) {
+            return null;
+        }
 
         return swi: switch (self.src[self.ptr]) {
             '0' ... '9' => {
@@ -132,8 +132,8 @@ pub const Lexer = struct {
         return tok;
     }
 
-    inline fn skip_whitespace(self: *Self) void {
-        while (std.ascii.isWhitespace(self.src[self.ptr])) {
+    fn skip_whitespace(self: *Self) void {
+        while (self.is_bound() and std.ascii.isWhitespace(self.src[self.ptr])) {
             self.ptr += 1;
         }
     }

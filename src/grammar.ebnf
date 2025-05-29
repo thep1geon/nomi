@@ -1,0 +1,15 @@
+program         = decl ;
+
+decl            = func_decl ;
+
+func_decl       = "void" ident "(" ")" stmt ;
+
+stmt            =  block | expr ";" ;
+
+block           = "{" { stmt ";" } "}" ;
+
+expr            = funcall | literal ;
+
+funcall         = ident "(" number ")"
+
+number          = ... ;

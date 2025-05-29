@@ -1,29 +1,30 @@
 const std = @import("std");
 
-const lex = @import("lex.zig");
-const Lexer = lex.Lexer;
-
-const ast = @import("ast.zig");
+const Parser = @import("Parser.zig");
 
 pub fn main() !void {
-    const src = "void main() {\n    putchar(42);\n}";
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
-    var lexer = Lexer.init(src);
+    var arena = std.heap.ArenaAllocator.init(gpa.allocator());
 
-    while (lexer.next()) |tok| {
-        tok.pprint();
+    defer {
+        arena.deinit();
+
+        if (gpa.deinit() == .leak) {
+            std.log.err("{}\n", .{gpa.detectLeaks()});
+        }
     }
 
-    var int = ast.Integer.init(42);
-    var funcall = ast.Funcall.init("putchar", int.ast());
-    var block = ast.Block.init(funcall.ast());
 
-    var prog = ast.Program.init(
-        ast.FuncDecl.init(
-            "main", 
-            block.ast(),
-        ),
-    );
+    const src = 
+        \\void main() {
+        \\    putchar(42);
+        \\}
+        ;
 
-    prog.ast().pprint();
+    var parser = Parser.init(src, &arena);
+
+    const ast = try parser.parse();
+
+    ast.emit();
 }
