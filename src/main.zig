@@ -4,8 +4,8 @@ const Parser = @import("Parser.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-
-    var arena = std.heap.ArenaAllocator.init(gpa.allocator());
+    const alloc = gpa.allocator();
+    var arena = std.heap.ArenaAllocator.init(alloc);
 
     defer {
         arena.deinit();
@@ -15,12 +15,11 @@ pub fn main() !void {
         }
     }
 
+    const src_file = try std.fs.cwd().openFile("star.c", .{});
+    defer src_file.close();
 
-    const src = 
-        \\void main() {
-        \\    putchar(42);
-        \\}
-        ;
+    const src = try src_file.readToEndAlloc(alloc, 1024);
+    defer alloc.free(src);
 
     var parser = Parser.init(src, &arena);
 

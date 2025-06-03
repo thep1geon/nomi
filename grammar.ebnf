@@ -8,8 +8,8 @@ stmt            =  block | expr ";" ;
 
 block           = "{" { stmt ";" } "}" ;
 
-expr            = funcall | literal ;
+expr            = funcall | number ;
 
-funcall         = ident "(" number ")"
+funcall         = ident "(" expr ")"
 
 number          = ... ;

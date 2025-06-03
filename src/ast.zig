@@ -20,13 +20,24 @@ const pprinter = struct {
     }
 };
 
+pub var alloc: Allocator = undefined;
+
 pub const Ast = struct {
+    pub const Kind = enum {
+        program,
+        func_decl,
+        block,
+        funcall,
+        integer,
+    };
+
+    kind: Kind,
     ptr: *anyopaque,
     pprint_fn: *const fn (ptr: *anyopaque) void,
-    deinit_fn: *const fn (ptr: *anyopaque, allocator: Allocator) void,
+    deinit_fn: *const fn (ptr: *anyopaque) void,
     emit_fn: *const fn (ptr: *anyopaque) void,
 
-    pub fn init(ast_ptr: anytype) Ast {
+    pub fn init(ast_ptr: anytype, kind: Kind) Ast {
         const T = @TypeOf(ast_ptr);
         std.debug.assert(@typeInfo(T) == .pointer);
         std.debug.assert(@typeInfo(T).pointer.size == .one);
@@ -41,8 +52,8 @@ pub const Ast = struct {
                 get_self(ptr).pprint();
             }
 
-            pub fn deinit(ptr: *anyopaque, allocator: Allocator) void {
-                get_self(ptr).deinit(allocator);
+            pub fn deinit(ptr: *anyopaque) void {
+                get_self(ptr).deinit();
             }
 
             pub fn emit(ptr: *anyopaque) void {
@@ -51,6 +62,7 @@ pub const Ast = struct {
         };
 
         return .{
+            .kind = kind,
             .ptr = ast_ptr,
             .pprint_fn = gen.pprint,
             .deinit_fn = gen.deinit,
@@ -62,32 +74,39 @@ pub const Ast = struct {
         self.pprint_fn(self.ptr);
     }
 
-    pub fn deinit(self: *const Ast, allocator: Allocator) void {
-        self.deinit_fn(self.ptr, allocator);
+    pub fn deinit(self: *const Ast) void {
+        self.deinit_fn(self.ptr);
     }
 
     pub fn emit(self: *const Ast) void {
         self.emit_fn(self.ptr);
+    }
+
+    pub fn as(self: *const Ast, T: anytype) T {
+        std.debug.assert(@typeInfo(T) == .pointer);
+        std.debug.assert(@typeInfo(T).pointer.size == .one);
+        std.debug.assert(@typeInfo(@typeInfo(T).pointer.child) == .@"struct");
+        return @ptrCast(@alignCast(self.ptr));
     }
 };
 
 pub const Program = struct {
     func: Ast,
 
-    pub fn init(allocator: Allocator, func: Ast) *Program {
-        var prog = allocator.create(Program) catch @panic("Out of memory :/");
+    pub fn init(func: Ast) *Program {
+        var prog = alloc.create(Program) catch @panic("Out of memory :/");
         prog.func = func;
 
         return prog;
     }
 
-    pub fn deinit(self: *Program, allocator: Allocator) void {
-        self.func.deinit(allocator);
-        allocator.destroy(self);
+    pub fn deinit(self: *Program) void {
+        self.func.deinit();
+        alloc.destroy(self);
     }
 
     pub fn ast(self: *Program) Ast {
-        return Ast.init(self);
+        return Ast.init(self, .program);
     }
 
     pub fn pprint(self: *Program) void {
@@ -106,21 +125,21 @@ pub const FuncDecl = struct {
     name: []const u8,
     stmt: Ast,
 
-    pub fn init(allocator: Allocator, name: []const u8, stmt: Ast) *FuncDecl {
-        var func_decl = allocator.create(FuncDecl) catch @panic("Out of memory :/");
+    pub fn init(name: []const u8, stmt: Ast) *FuncDecl {
+        var func_decl = alloc.create(FuncDecl) catch @panic("Out of memory :/");
         func_decl.name = name;
         func_decl.stmt = stmt;
 
         return func_decl;
     }
 
-    pub fn deinit(self: *FuncDecl, allocator: Allocator) void {
-        self.stmt.deinit(allocator);
-        allocator.destroy(self);
+    pub fn deinit(self: *FuncDecl) void {
+        self.stmt.deinit();
+        alloc.destroy(self);
     }
 
     pub fn ast(self: *FuncDecl) Ast {
-        return Ast.init(self);
+        return Ast.init(self, .func_decl);
     }
 
     pub fn pprint(self: *FuncDecl) void {
@@ -145,31 +164,42 @@ pub const FuncDecl = struct {
 };
 
 pub const Block = struct {
-    stmt: Ast,
+    stmts: std.ArrayList(Ast),
 
-    pub fn init(allocator: Allocator, stmt: Ast) *Block {
-        var block = allocator.create(Block) catch @panic("Out of memory :/");
-        block.stmt = stmt;
+    pub fn init() *Block {
+        var block = alloc.create(Block) catch @panic("Out of memory :/");
+        block.stmts = std.ArrayList(Ast).init(alloc);
 
         return block;
     }
 
-    pub fn deinit(self: *Block, allocator: Allocator) void {
-        self.stmt.deinit(allocator);
-        allocator.destroy(self);
+    pub fn deinit(self: *Block) void {
+        for (self.stmts.items) |stmt| {
+            stmt.deinit();
+        }
+        self.stmts.deinit();
+        alloc.destroy(self);
+    }
+
+    pub fn add_stmt(self: *Block, stmt: Ast) void {
+        self.stmts.append(stmt) catch @panic("🤷");
     }
 
     pub fn ast(self: *Block) Ast {
-        return Ast.init(self);
+        return Ast.init(self, .block);
     }
 
     pub fn pprint(self: *Block) void {
         std.debug.print("Block:\n", .{});
-        pprinter.print(self.stmt, pprinter.ilevel + 1);
+        for (self.stmts.items) |stmt| {
+            pprinter.print(stmt, pprinter.ilevel + 1);
+        }
     }
 
     pub fn emit(self: *Block) void {
-        self.stmt.emit();
+        for (self.stmts.items) |stmt| {
+            stmt.emit();
+        }
     }
 };
 
@@ -177,21 +207,21 @@ pub const Funcall = struct {
     name: []const u8,
     arg: Ast,
 
-    pub fn init(allocator: Allocator, name: []const u8, arg: Ast) *Funcall {
-        var funcall = allocator.create(Funcall) catch @panic("Out of memory :/");
+    pub fn init(name: []const u8, arg: Ast) *Funcall {
+        var funcall = alloc.create(Funcall) catch @panic("Out of memory :/");
         funcall.name = name;
         funcall.arg = arg;
 
         return funcall;
     }
 
-    pub fn deinit(self: *Funcall, allocator: Allocator) void {
-        self.arg.deinit(allocator);
-        allocator.destroy(self);
+    pub fn deinit(self: *Funcall) void {
+        self.arg.deinit();
+        alloc.destroy(self);
     }
 
     pub fn ast(self: *Funcall) Ast {
-        return Ast.init(self);
+        return Ast.init(self, .funcall);
     }
 
     pub fn pprint(self: *Funcall) void {
@@ -210,8 +240,17 @@ pub const Funcall = struct {
     }
 
     pub fn emit(self: Funcall) void {
-        self.arg.emit();
-        std.debug.print("    popq       %rdi\n", .{});
+        switch (self.arg.kind) {
+            .integer => {
+                const int = self.arg.as(*Integer);
+                std.debug.print("    movq       ${d}, %rdi\n", .{int.num});
+            },
+            .funcall => {
+                self.arg.emit();
+                std.debug.print("    movq       %rax, %rdi\n", .{});
+            },
+            else => unreachable,
+        }
         std.debug.print("    call       {s}\n", .{self.name});
     }
 };
@@ -219,19 +258,19 @@ pub const Funcall = struct {
 pub const Integer = struct {
     num: u64,
 
-    pub fn init(allocator: Allocator, num: u64) *Integer {
-        var integer = allocator.create(Integer) catch @panic("Out of memory :/");
+    pub fn init(num: u64) *Integer {
+        var integer = alloc.create(Integer) catch @panic("Out of memory :/");
         integer.num = num;
 
         return integer;
     }
 
-    pub fn deinit(self: *Integer, allocator: Allocator) void {
-        allocator.destroy(self);
+    pub fn deinit(self: *Integer) void {
+        alloc.destroy(self);
     }
 
     pub fn ast(self: *Integer) Ast {
-        return Ast.init(self);
+        return Ast.init(self, .integer);
     }
 
     pub fn pprint(self: *Integer) void {
