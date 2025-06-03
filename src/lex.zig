@@ -3,13 +3,16 @@ const std = @import("std");
 pub const Token = struct {
     pub const TokenKind = enum {
         _void,
-        ident,
+        _return,
+
         lparen,
         rparen,
         lcurly,
         rcurly,
-        integer,
         semicolon,
+
+        ident,
+        integer,
     };
 
     kind: TokenKind,
@@ -96,6 +99,8 @@ pub const Lexer = struct {
 
                 if (std.mem.eql(u8, self.get_token_str(), "void")) {
                     return self.make_token(._void);
+                } else if (std.mem.eql(u8, self.get_token_str(), "return")) {
+                    return self.make_token(._return);
                 }
 
                 break :swi self.make_token(.ident);
@@ -113,23 +118,6 @@ pub const Lexer = struct {
         defer self.ptr = ptr;
 
         return self.next();
-    }
-
-    pub fn peekn(self: *Self, n: usize) ?Token {
-        const ptr = self.ptr;
-        defer self.ptr = ptr;
-
-        var tok: ?Token = null;
-
-        for (0..n) |_| {
-            tok = self.next();
-
-            if (tok == null) {
-                return null;
-            }
-        }
-
-        return tok;
     }
 
     fn skip_whitespace(self: *Self) void {

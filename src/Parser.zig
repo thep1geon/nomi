@@ -62,6 +62,8 @@ fn parse_stmt(self: *Parser) ParsingError!ast.Ast {
 
     if (tok.?.kind == .lcurly) {
         return self.parse_block();
+    } else if (tok.?.kind == ._return) {
+        return self.parse_return();
     }
 
     const expr = try self.parse_expr();
@@ -88,6 +90,16 @@ fn parse_block(self: *Parser) ParsingError!ast.Ast {
     }
 
     return block.ast();
+}
+
+fn parse_return(self: *Parser) ParsingError!ast.Ast {
+    _ = try self.expect_next(._return);
+
+    const expr = try self.parse_expr();
+
+    _ = try self.expect_next(.semicolon);
+
+    return ast.Return.init(expr).ast();
 }
 
 fn parse_expr(self: *Parser) ParsingError!ast.Ast {

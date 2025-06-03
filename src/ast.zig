@@ -27,6 +27,7 @@ pub const Ast = struct {
         program,
         func_decl,
         block,
+        _return,
         funcall,
         integer,
     };
@@ -158,8 +159,6 @@ pub const FuncDecl = struct {
         std.debug.print("    pushq      %rbp\n", .{});
         std.debug.print("    movq       %rsp, %rbp\n", .{});
         self.stmt.emit();
-        std.debug.print("    popq       %rbp\n", .{});
-        std.debug.print("    ret\n", .{});
     }
 };
 
@@ -200,6 +199,50 @@ pub const Block = struct {
         for (self.stmts.items) |stmt| {
             stmt.emit();
         }
+    }
+};
+
+pub const Return = struct {
+    expr: Ast,
+
+    pub fn init(expr: Ast) *Return {
+        var ret = alloc.create(Return) catch @panic("Out of memory :/");
+        ret.expr = expr;
+
+        return ret;
+    }
+
+    pub fn deinit(self: *Return) void {
+        self.expr.deinit();
+        alloc.destroy(self);
+    }
+
+    pub fn ast(self: *Return) Ast {
+        return Ast.init(self, ._return);
+    }
+
+    pub fn pprint(self: *Return) void {
+        std.debug.print("Return:\n", .{});
+
+        pprinter.indent(pprinter.ilevel + 1);
+        std.debug.print("Expr:\n", .{});
+
+        pprinter.print(self.expr, pprinter.ilevel + 2);
+    }
+
+    pub fn emit(self: Return) void {
+        switch (self.expr.kind) {
+            .integer => {
+                const int = self.expr.as(*Integer);
+                std.debug.print("    movq       ${d}, %rax\n", .{int.num});
+            },
+            .funcall => {
+                self.expr.emit();
+            },
+            else => unreachable,
+        }
+        std.debug.print("    popq       %rbp\n", .{});
+        std.debug.print("    ret\n", .{});
     }
 };
 
