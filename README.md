@@ -62,6 +62,8 @@ motto for this project is "one thing at a time".
 
 ## What's in a name?
 
+### Nah-mee
+
 The name Nomi comes from a few different places. Most notably, it is heavily
 inspired by my girlfriend's nickname, _Nemo_. Nomi is a loose combination of her
 nickname and her real name. Nomi also has a few meanings I think are very neat.
