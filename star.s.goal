@@ -1,9 +1,0 @@
-	.text
-    .globl  main
-main:
-	pushq   %rbp
-	movq	%rsp, %rbp
-	movl	$42, %edi
-	call    putchar
-	popq	%rbp
-	ret

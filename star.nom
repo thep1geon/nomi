@@ -1,0 +1,8 @@
+func _start() void {
+    const ret = main();
+    exit(ret);
+}
+
+func main() i32 {
+    return 42;
+}
