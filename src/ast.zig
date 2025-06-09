@@ -1,4 +1,5 @@
 const std = @import("std");
+const Writer = std.fs.File.Writer;
 const Allocator = std.mem.Allocator;
 
 const pprinter = struct {
@@ -30,7 +31,7 @@ pub const Ast = struct {
         func_decl,
         block,
         _return,
-        funcall,
+        func_call,
         integer,
     };
 
@@ -38,7 +39,7 @@ pub const Ast = struct {
     ptr: *anyopaque,
     pprint_fn: *const fn (ptr: *anyopaque) void,
     deinit_fn: *const fn (ptr: *anyopaque) void,
-    emit_fn: *const fn (ptr: *anyopaque) void,
+    emit_fn: *const fn (ptr: *anyopaque, writer: Writer) Writer.Error!void,
 
     pub fn init(ast_ptr: anytype, kind: Kind) Ast {
         const T = @TypeOf(ast_ptr);
@@ -59,8 +60,8 @@ pub const Ast = struct {
                 get_self(ptr).deinit();
             }
 
-            pub fn emit(ptr: *anyopaque) void {
-                get_self(ptr).emit();
+            pub fn emit(ptr: *anyopaque, writer: Writer) !void {
+                try get_self(ptr).emit(writer);
             }
         };
 
@@ -81,8 +82,8 @@ pub const Ast = struct {
         self.deinit_fn(self.ptr);
     }
 
-    pub fn emit(self: *const Ast) void {
-        self.emit_fn(self.ptr);
+    pub fn emit(self: *const Ast, writer: Writer) !void {
+        try self.emit_fn(self.ptr, writer);
     }
 
     pub fn as(self: *const Ast, T: anytype) T {
@@ -117,14 +118,14 @@ pub const Program = struct {
         pprinter.print(self.func, pprinter.ilevel + 1);
     } 
 
-    pub fn emit(self: *Program) void {
-        std.debug.print("format ELF64\n", .{});
-        std.debug.print("section '.text' executable\n\n", .{});
-        std.debug.print("public exit\n", .{});
-        std.debug.print("exit:\n", .{});
-        std.debug.print("    mov        rax, 0x3c\n", .{});
-        std.debug.print("    syscall\n\n", .{});
-        self.func.emit();
+    pub fn emit(self: *Program, writer: Writer) !void {
+        _ = try writer.write("format ELF64\n");
+        _ = try writer.write("section '.text' executable\n\n");
+        _ = try writer.write("public exit\n");
+        _ = try writer.write("exit:\n");
+        _ = try writer.write("    mov        rax, 0x3c\n");
+        _ = try writer.write("    syscall\n\n");
+        try self.func.emit(writer);
     }
 };
 
@@ -160,12 +161,12 @@ pub const FuncDecl = struct {
         pprinter.print(self.stmt, pprinter.ilevel + 2);
     }
 
-    pub fn emit(self: *FuncDecl) void {
-        std.debug.print("public {s}\n", .{self.name});
-        std.debug.print("{s}:\n", .{self.name});
-        std.debug.print("    push       rbp\n", .{});
-        std.debug.print("    mov        rbp, rsp\n", .{});
-        self.stmt.emit();
+    pub fn emit(self: *FuncDecl, writer: Writer) !void {
+        try writer.print("public {s}\n", .{self.name});
+        try writer.print("{s}:\n", .{self.name});
+        _ = try writer.write("    push       rbp\n");
+        _ = try writer.write("    mov        rbp, rsp\n");
+        try self.stmt.emit(writer);
     }
 };
 
@@ -202,9 +203,9 @@ pub const Block = struct {
         }
     }
 
-    pub fn emit(self: *Block) void {
+    pub fn emit(self: *Block, writer: Writer) !void {
         for (self.stmts.items) |stmt| {
-            stmt.emit();
+            try stmt.emit(writer);
         }
     }
 };
@@ -237,19 +238,19 @@ pub const Return = struct {
         pprinter.print(self.expr, pprinter.ilevel + 2);
     }
 
-    pub fn emit(self: Return) void {
+    pub fn emit(self: Return, writer: Writer) !void {
         switch (self.expr.kind) {
             .integer => {
                 const int = self.expr.as(*Integer);
-                std.debug.print("    mov        rax, {d}\n", .{int.num});
+                try writer.print("    mov        rax, {d}\n", .{int.num});
             },
-            .funcall => {
-                self.expr.emit();
+            .func_call => {
+                try self.expr.emit(writer);
             },
             else => unreachable,
         }
-        std.debug.print("    pop        rbp\n", .{});
-        std.debug.print("    ret\n", .{});
+        _ = try writer.write("    pop        rbp\n");
+        _ = try writer.write("    ret\n");
     }
 };
 
@@ -271,7 +272,7 @@ pub const FuncCall = struct {
     }
 
     pub fn ast(self: *FuncCall) Ast {
-        return Ast.init(self, .funcall);
+        return Ast.init(self, .func_call);
     }
 
     pub fn pprint(self: *FuncCall) void {
@@ -289,19 +290,19 @@ pub const FuncCall = struct {
         pprinter.print(self.arg, pprinter.ilevel + 2);
     }
 
-    pub fn emit(self: FuncCall) void {
+    pub fn emit(self: FuncCall, writer: Writer) !void {
         switch (self.arg.kind) {
             .integer => {
                 const int = self.arg.as(*Integer);
-                std.debug.print("    mov        rdi, {d}\n", .{int.num});
+                try writer.print("    mov        rdi, {d}\n", .{int.num});
             },
-            .funcall => {
-                self.arg.emit();
-                std.debug.print("    mov        rdi, rax\n", .{});
+            .func_call => {
+                try self.arg.emit(writer);
+                _ = try writer.write("    mov        rdi, rax\n");
             },
             else => unreachable,
         }
-        std.debug.print("    call       {s}\n", .{self.name});
+        try writer.print("    call       {s}\n", .{self.name});
     }
 };
 
@@ -329,8 +330,8 @@ pub const Integer = struct {
         std.debug.print("{d}\n", .{self.num});
     }
 
-    pub fn emit(self: *Integer) void {
-        _ = self;
+    pub fn emit(self: *Integer, writer: Writer) !void {
+        _ = .{self, writer};
         unreachable;
     }
 };

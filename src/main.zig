@@ -20,11 +20,13 @@ pub fn main() !void {
     var args = try std.process.argsWithAllocator(alloc);
     defer args.deinit();
 
-
     const opts = try cli.parse_args(&args);
 
     const src_file = try std.fs.cwd().openFile(opts.input_path, .{});
     defer src_file.close();
+
+    var out_file = try std.fs.cwd().createFile(opts.output_path, .{});
+    defer out_file.close();
 
     const src = try src_file.readToEndAlloc(alloc, 1024);
     defer alloc.free(src);
@@ -33,12 +35,22 @@ pub fn main() !void {
 
     const ast = try parser.parse();
 
-    ast.emit();
+    try ast.emit(out_file.writer());
+
+    const fasm_proc = try std.process.Child.run(.{
+        .allocator = alloc,
+        .argv = &[_][]const u8{
+            "fasm",
+            opts.output_path,
+            opts.output_path,
+        },
+    });
+    defer alloc.free(fasm_proc.stdout);
+    defer alloc.free(fasm_proc.stderr);
 }
 
-// TODO: Make the compiler emit object files assembled by FASM
 // TODO: Add location information for better errors
-// TODO: External functions from Nomi (written in FASM)
+// TODO: External functions from Nomi (written in FASM) (extern func sys_exit(i32) void;)
 // TODO: Start work on IR layer to abstract frontend and backend
 // TODO: Start work on a type system
 // TODO: Start work on user declared functions and calling user declared functions

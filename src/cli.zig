@@ -1,60 +1,66 @@
 const std = @import("std");
 const ArgIterator = std.process.ArgIterator;
 
-const NomiOptions = struct {
-    input_path: []const u8,
-};
-
 const CLIError = error {
-    MissingInputFile,
-    TooManyArgs,
+    MissingInputFilePath,
+    TooManyOptions,
 };
 
-fn str_eql(a: []const u8, b: []const u8) bool {
-    if (a.len != b.len) return false;
-    if (a.len == 0 or a.ptr == b.ptr) return true;
+const options = struct {
+    // More of an outline
+    const NomiOptionsTemplate = struct {
+        input_path: ?[]const u8 = null,
+        output_path: ?[]const u8 = null,
+    };
 
-    for (a, b) |a_elem, b_elem| {
-        if (a_elem != b_elem) return false;
+    // Guarantees
+    const NomiOptions = struct {
+        input_path: []const u8 = "",
+        output_path: []const u8 = "",
+    };
+
+    pub fn finalize(opts: NomiOptionsTemplate) CLIError!NomiOptions {
+        var final_opts = NomiOptions{};
+
+        final_opts.input_path = opts.input_path orelse {
+            std.debug.print("Missing input file path.\n", .{});
+            return CLIError.MissingInputFilePath;
+        };
+
+        final_opts.output_path = opts.output_path orelse "output.o";
+
+        return final_opts;
     }
-    return true;
-}
-
+};
 
 pub fn print_usage() void {
     const help = 
         \\Usage:
-        \\      nomic <input-file>
+        \\      nomic <input-file> [output-file]
+        \\      
+        \\      output-file defaults to "output.o" if nothing is provided
         ;
 
     std.debug.print("{s}\n", .{help});
     return;
 }
 
-pub fn parse_args(args: *ArgIterator) !NomiOptions {
-    var input_path: ?[]const u8 = null;
+pub fn parse_args(args: *ArgIterator) CLIError!options.NomiOptions {
+    var opts = options.NomiOptionsTemplate{};
 
     // Skip the first arg, which is the compiler
     _ = args.skip();
 
-    // We only support 1 file being passed into the compiler and no args
     while (args.next()) |arg| {
-        if (input_path != null) {
-            std.debug.print("Too many options\n", .{});
-            print_usage();
-            return CLIError.TooManyArgs;
+        if (opts.input_path == null) {
+            opts.input_path = arg;
+        } else if (opts.input_path != null and opts.output_path == null) {
+            opts.output_path = arg;
+        } else {
+            std.debug.print("Too many options.\n", .{});
+            return CLIError.TooManyOptions;
         }
-
-        input_path = arg; 
     }
 
-    if (input_path == null) {
-        std.debug.print("Missing input file.\n", .{});
-        print_usage();
-        return CLIError.MissingInputFile;
-    }
-
-    return NomiOptions{
-        .input_path = input_path.?,
-    };
+    return options.finalize(opts);
 }
