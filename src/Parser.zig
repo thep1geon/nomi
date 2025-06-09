@@ -20,7 +20,7 @@ allocator: Allocator,
 
 pub fn init(src: []const u8, arena: *ArenaAllocator) Parser {
     const alloc = arena.allocator();
-    ast.alloc = alloc;
+    ast.init(alloc);
     return .{
         .lexer = Lexer.init(src),
         .allocator = alloc,
@@ -40,12 +40,15 @@ fn parse_decl(self: *Parser) ParsingError!ast.Ast {
 }
 
 fn parse_func_decl(self: *Parser) ParsingError!ast.Ast {
-    _ = try self.expect_next(._void);
+    _ = try self.expect_next(.kw_func);
     
     const tok = try self.expect_next(.ident);
 
     _ = try self.expect_next(.lparen);
     _ = try self.expect_next(.rparen);
+
+    var possible_toks = [_]Token.TokenKind{.kw_void, .kw_i32};
+    _ = try self.expect_next_of(possible_toks[0..]);
 
     const stmt = try self.parse_stmt();
 
@@ -62,7 +65,7 @@ fn parse_stmt(self: *Parser) ParsingError!ast.Ast {
 
     if (tok.?.kind == .lcurly) {
         return self.parse_block();
-    } else if (tok.?.kind == ._return) {
+    } else if (tok.?.kind == .kw_return) {
         return self.parse_return();
     }
 
@@ -93,7 +96,7 @@ fn parse_block(self: *Parser) ParsingError!ast.Ast {
 }
 
 fn parse_return(self: *Parser) ParsingError!ast.Ast {
-    _ = try self.expect_next(._return);
+    _ = try self.expect_next(.kw_return);
 
     const expr = try self.parse_expr();
 
@@ -124,7 +127,7 @@ fn parse_funcall(self: *Parser) ParsingError!ast.Ast {
     const arg = try self.parse_expr();
     _ = try self.expect_next(.rparen);
 
-    return ast.Funcall.init(ident_tok.?.str, arg).ast();
+    return ast.FuncCall.init(ident_tok.?.str, arg).ast();
 }
 
 fn parse_number(self: *Parser) ParsingError!ast.Ast {
@@ -151,18 +154,30 @@ fn expect_next(self: *Parser, kind: Token.TokenKind) ParsingError!Token {
     return tok.?;
 }
 
-fn expect_peek(self: *Parser, kind: Token.TokenKind) ParsingError!Token {
-    const tok = self.lexer.peek();
+fn expect_next_of(self: *Parser, kinds: []Token.TokenKind) ParsingError!Token {
+    const tok = self.lexer.next();
 
     if (tok == null) {
-        std.debug.print("Expected {} but found end of file\n", .{kind});
+        std.debug.print("Expected ", .{});
+        for (kinds) |kind| {
+            std.debug.print("{}, ", .{kind});
+        }
+        std.debug.print("but found end of file", .{});
         return ParsingError.UnexpectedToken;
     }
 
-    if (tok.?.kind != kind) {
-        std.debug.print("Expected {} but found {} instead\n", .{kind, tok.?.kind});
-        return ParsingError.UnexpectedToken;
+    const token = tok.?;
+
+    for (kinds) |kind| {
+        if (kind == token.kind) {
+            return token;
+        }
     }
 
-    return tok.?;
+    std.debug.print("Expected ", .{});
+    for (kinds) |kind| {
+        std.debug.print("{}, ", .{kind});
+    }
+    std.debug.print("but found {} instead\n", .{token.kind});
+    return ParsingError.UnexpectedToken;
 }

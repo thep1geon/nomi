@@ -1,9 +1,9 @@
 .{
-    .name = .compiler,
+    .name = .nomi,
 
     .version = "0.1.0",
 
-    .fingerprint = 0xaa62bd499dd85af0, // Changing this has security and trust implications.
+    .fingerprint =  0x5d0b1f27f5d808ef,
 
     .minimum_zig_version = "0.14.1",
 

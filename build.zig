@@ -12,7 +12,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const exe = b.addExecutable(.{
-        .name = "compiler",
+        .name = "nomic",
         .root_module = exe_mod,
     });
 
@@ -26,7 +26,7 @@ pub fn build(b: *std.Build) void {
         run_cmd.addArgs(args);
     }
 
-    const run_step = b.step("run", "Run the app");
+    const run_step = b.step("run", "Run the Nomi compiler");
     run_step.dependOn(&run_cmd.step);
 
     const exe_unit_tests = b.addTest(.{

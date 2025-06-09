@@ -1,5 +1,4 @@
 const std = @import("std");
-
 const Allocator = std.mem.Allocator;
 
 const pprinter = struct {
@@ -20,7 +19,10 @@ const pprinter = struct {
     }
 };
 
-pub var alloc: Allocator = undefined;
+var alloc: Allocator = undefined;
+pub fn init(allocator: Allocator) void {
+    alloc = allocator;
+}
 
 pub const Ast = struct {
     pub const Kind = enum {
@@ -116,8 +118,12 @@ pub const Program = struct {
     } 
 
     pub fn emit(self: *Program) void {
-        std.debug.print("    .text\n", .{});
-        std.debug.print("    .globl main\n", .{});
+        std.debug.print("format ELF64\n", .{});
+        std.debug.print("section '.text' executable\n\n", .{});
+        std.debug.print("public exit\n", .{});
+        std.debug.print("exit:\n", .{});
+        std.debug.print("    mov        rax, 0x3c\n", .{});
+        std.debug.print("    syscall\n\n", .{});
         self.func.emit();
     }
 };
@@ -155,9 +161,10 @@ pub const FuncDecl = struct {
     }
 
     pub fn emit(self: *FuncDecl) void {
+        std.debug.print("public {s}\n", .{self.name});
         std.debug.print("{s}:\n", .{self.name});
-        std.debug.print("    pushq      %rbp\n", .{});
-        std.debug.print("    movq       %rsp, %rbp\n", .{});
+        std.debug.print("    push       rbp\n", .{});
+        std.debug.print("    mov        rbp, rsp\n", .{});
         self.stmt.emit();
     }
 };
@@ -234,41 +241,41 @@ pub const Return = struct {
         switch (self.expr.kind) {
             .integer => {
                 const int = self.expr.as(*Integer);
-                std.debug.print("    movq       ${d}, %rax\n", .{int.num});
+                std.debug.print("    mov        rax, {d}\n", .{int.num});
             },
             .funcall => {
                 self.expr.emit();
             },
             else => unreachable,
         }
-        std.debug.print("    popq       %rbp\n", .{});
+        std.debug.print("    pop        rbp\n", .{});
         std.debug.print("    ret\n", .{});
     }
 };
 
-pub const Funcall = struct {
+pub const FuncCall = struct {
     name: []const u8,
     arg: Ast,
 
-    pub fn init(name: []const u8, arg: Ast) *Funcall {
-        var funcall = alloc.create(Funcall) catch @panic("Out of memory :/");
+    pub fn init(name: []const u8, arg: Ast) *FuncCall {
+        var funcall = alloc.create(FuncCall) catch @panic("Out of memory :/");
         funcall.name = name;
         funcall.arg = arg;
 
         return funcall;
     }
 
-    pub fn deinit(self: *Funcall) void {
+    pub fn deinit(self: *FuncCall) void {
         self.arg.deinit();
         alloc.destroy(self);
     }
 
-    pub fn ast(self: *Funcall) Ast {
+    pub fn ast(self: *FuncCall) Ast {
         return Ast.init(self, .funcall);
     }
 
-    pub fn pprint(self: *Funcall) void {
-        std.debug.print("Funcall:\n", .{});
+    pub fn pprint(self: *FuncCall) void {
+        std.debug.print("FuncCall:\n", .{});
 
         pprinter.indent(pprinter.ilevel + 1);
         std.debug.print("Name:\n", .{});
@@ -282,15 +289,15 @@ pub const Funcall = struct {
         pprinter.print(self.arg, pprinter.ilevel + 2);
     }
 
-    pub fn emit(self: Funcall) void {
+    pub fn emit(self: FuncCall) void {
         switch (self.arg.kind) {
             .integer => {
                 const int = self.arg.as(*Integer);
-                std.debug.print("    movq       ${d}, %rdi\n", .{int.num});
+                std.debug.print("    mov        rdi, {d}\n", .{int.num});
             },
             .funcall => {
                 self.arg.emit();
-                std.debug.print("    movq       %rax, %rdi\n", .{});
+                std.debug.print("    mov        rdi, rax\n", .{});
             },
             else => unreachable,
         }
@@ -323,6 +330,7 @@ pub const Integer = struct {
     }
 
     pub fn emit(self: *Integer) void {
-        std.debug.print("    pushq      ${d}\n", .{self.num});
+        _ = self;
+        unreachable;
     }
 };

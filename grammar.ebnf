@@ -1,15 +1,17 @@
-program         = decl ;
+program         = { decl } ;
 
 decl            = func_decl ;
 
-func_decl       = "void" ident "(" ")" stmt ;
+func_decl       = func ident "("")" ("void"|"i32") stmt;
 
-stmt            =  block | expr ";" ;
+stmt            =  (block | expr ";") ;
 
 block           = "{" { stmt ";" } "}" ;
 
-expr            = funcall | number ;
+expr            = (funcall | number) ;
 
 funcall         = ident "(" expr ")"
 
 number          = ... ;
+
+ident           = ... ;

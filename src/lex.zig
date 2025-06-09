@@ -2,8 +2,10 @@ const std = @import("std");
 
 pub const Token = struct {
     pub const TokenKind = enum {
-        _void,
-        _return,
+        kw_void,
+        kw_return,
+        kw_i32,
+        kw_func,
 
         lparen,
         rparen,
@@ -90,7 +92,7 @@ pub const Lexer = struct {
                 break :swi self.make_token(.semicolon);
             },
 
-            'a' ... 'z', 'A' ... 'Z' => {
+            'a' ... 'z', 'A' ... 'Z', '_' => {
                 self.ptr += 1;
 
                 while (self.is_bound() and std.ascii.isAlphanumeric(self.src[self.ptr])) {
@@ -98,10 +100,15 @@ pub const Lexer = struct {
                 }
 
                 if (std.mem.eql(u8, self.get_token_str(), "void")) {
-                    return self.make_token(._void);
+                    return self.make_token(.kw_void);
                 } else if (std.mem.eql(u8, self.get_token_str(), "return")) {
-                    return self.make_token(._return);
+                    return self.make_token(.kw_return);
+                } else if (std.mem.eql(u8, self.get_token_str(), "i32")) {
+                    return self.make_token(.kw_i32);
+                } else if (std.mem.eql(u8, self.get_token_str(), "func")) {
+                    return self.make_token(.kw_func);
                 }
+
 
                 break :swi self.make_token(.ident);
             },
