@@ -64,7 +64,7 @@ and then we can emit an executable file. But this is not much of a priority righ
 
 ## What's in a name?
 
-### Nah-mee
+### Noh-mee
 
 The name Nomi comes from a few different places. Most notably, it is heavily
 inspired by my girlfriend's nickname, _Nemo_. Nomi is a loose combination of her
