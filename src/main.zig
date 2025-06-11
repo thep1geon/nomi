@@ -31,7 +31,7 @@ pub fn main() !void {
     const src = try src_file.readToEndAlloc(alloc, 1024);
     defer alloc.free(src);
 
-    var parser = Parser.init(src, &arena);
+    var parser = Parser.init(opts.input_path, src, &arena);
 
     const ast = try parser.parse();
 
@@ -49,7 +49,6 @@ pub fn main() !void {
     defer alloc.free(fasm_proc.stderr);
 }
 
-// TODO: Add location information for better errors
 // TODO: External functions from Nomi (written in FASM) (extern func sys_exit(i32) void;)
 // TODO: Start work on IR layer to abstract frontend and backend
 // TODO: Start work on a type system
@@ -58,3 +57,4 @@ pub fn main() !void {
 // TODO: Variables
 // TODO: Functions which takes args
 // TODO: Hello, World!
+// TODO: Semantic Analysis (Ensuring functions return, etc.)

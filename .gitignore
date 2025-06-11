@@ -2,4 +2,4 @@
 zig-out/
 start
 start.o
-start.asm
+output.o

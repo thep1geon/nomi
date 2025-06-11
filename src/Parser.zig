@@ -6,40 +6,41 @@ const ast = @import("ast.zig");
 
 const lex = @import("lex.zig");
 const Token = lex.Token;
+const TokenKind = Token.Kind;
 const Lexer = lex.Lexer;
 
-pub const ParsingError = error{
+pub const Error = error{
     UnexpectedToken,
     ExpectedStatement,
 };
 
-const Parser = @This();
+const Self = @This();
 
 lexer: Lexer,
 allocator: Allocator,
 
-pub fn init(src: []const u8, arena: *ArenaAllocator) Parser {
+pub fn init(file_name: []const u8, src: []const u8, arena: *ArenaAllocator) Self {
     const alloc = arena.allocator();
     ast.init(alloc);
     return .{
-        .lexer = Lexer.init(src),
+        .lexer = Lexer.init(file_name, src),
         .allocator = alloc,
     };
 }
 
-pub fn parse(self: *Parser) ParsingError!ast.Ast {
+pub fn parse(self: *Self) Error!ast.Ast {
     return self.parse_program();
 }
 
-fn parse_program(self: *Parser) ParsingError!ast.Ast {
+fn parse_program(self: *Self) Error!ast.Ast {
     return ast.Program.init(try self.parse_decl()).ast();
 }
 
-fn parse_decl(self: *Parser) ParsingError!ast.Ast {
+fn parse_decl(self: *Self) Error!ast.Ast {
     return self.parse_func_decl();
 }
 
-fn parse_func_decl(self: *Parser) ParsingError!ast.Ast {
+fn parse_func_decl(self: *Self) Error!ast.Ast {
     _ = try self.expect_next(.kw_func);
     
     const tok = try self.expect_next(.ident);
@@ -47,7 +48,7 @@ fn parse_func_decl(self: *Parser) ParsingError!ast.Ast {
     _ = try self.expect_next(.lparen);
     _ = try self.expect_next(.rparen);
 
-    var possible_toks = [_]Token.TokenKind{.kw_void, .kw_i32};
+    var possible_toks = [_]TokenKind{.kw_void, .kw_i32};
     _ = try self.expect_next_of(possible_toks[0..]);
 
     const stmt = try self.parse_stmt();
@@ -55,17 +56,16 @@ fn parse_func_decl(self: *Parser) ParsingError!ast.Ast {
     return ast.FuncDecl.init(tok.str, stmt).ast();
 }
 
-fn parse_stmt(self: *Parser) ParsingError!ast.Ast {
-    const tok = self.lexer.peek();
+fn parse_stmt(self: *Self) Error!ast.Ast {
+    const tok = self.lexer.peek() catch |err| {
+        self.lexer.loc.pprint();
+        std.debug.print(": Expected statement, ", .{});
+        return handle_lexing_error(err);
+    };
 
-    if (tok == null) {
-        std.debug.print("Expected Statement, found end of file\n", .{});
-        return ParsingError.ExpectedStatement;
-    }
-
-    if (tok.?.kind == .lcurly) {
+    if (tok.kind == .lcurly) {
         return self.parse_block();
-    } else if (tok.?.kind == .kw_return) {
+    } else if (tok.kind == .kw_return) {
         return self.parse_return();
     }
 
@@ -76,26 +76,27 @@ fn parse_stmt(self: *Parser) ParsingError!ast.Ast {
     return expr;
 }
 
-fn parse_block(self: *Parser) ParsingError!ast.Ast {
+fn parse_block(self: *Self) Error!ast.Ast {
     var block = ast.Block.init();
-    _ = self.lexer.next(); // Consume the curly brace as not to overflow the stack
+    _ = self.lexer.next() catch unreachable; // Consume the curly brace as not to overflow the stack
 
-    while (self.lexer.peek()) |tok| {
+    while (true) {
+        const tok = self.lexer.peek() catch |err| {
+            self.lexer.loc.pprint();
+            std.debug.print(": Expected closing brace, ", .{});
+            return handle_lexing_error(err);
+        };
+
         if (tok.kind == .rcurly) break;
 
         const stmt = try self.parse_stmt();
         block.add_stmt(stmt);
     }
 
-    if (self.lexer.peek() == null) {
-        std.debug.print("Expected closing brace, found end of file\n", .{});
-        return ParsingError.UnexpectedToken;
-    }
-
     return block.ast();
 }
 
-fn parse_return(self: *Parser) ParsingError!ast.Ast {
+fn parse_return(self: *Self) Error!ast.Ast {
     _ = try self.expect_next(.kw_return);
 
     const expr = try self.parse_expr();
@@ -105,32 +106,31 @@ fn parse_return(self: *Parser) ParsingError!ast.Ast {
     return ast.Return.init(expr).ast();
 }
 
-fn parse_expr(self: *Parser) ParsingError!ast.Ast {
-    const tok = self.lexer.peek();
+fn parse_expr(self: *Self) Error!ast.Ast {
+    const tok = self.lexer.peek() catch |err| {
+        self.lexer.loc.pprint();
+        std.debug.print(": Expected expression ", .{});
+        return handle_lexing_error(err);
+    };
 
-    if (tok == null) {
-        std.debug.print("Expected Statement, found end of file\n", .{});
-        return ParsingError.ExpectedStatement;
-    }
-
-    if (tok.?.kind == .ident) {
+    if (tok.kind == .ident) {
         return self.parse_funcall();
     }
 
     return self.parse_number();
 }
 
-fn parse_funcall(self: *Parser) ParsingError!ast.Ast {
-    const ident_tok = self.lexer.next(); // We don't need to check for null since we already checked
+fn parse_funcall(self: *Self) Error!ast.Ast {
+    const ident_tok = self.lexer.next() catch unreachable;
 
     _ = try self.expect_next(.lparen);
     const arg = try self.parse_expr();
     _ = try self.expect_next(.rparen);
 
-    return ast.FuncCall.init(ident_tok.?.str, arg).ast();
+    return ast.FuncCall.init(ident_tok.str, arg).ast();
 }
 
-fn parse_number(self: *Parser) ParsingError!ast.Ast {
+fn parse_number(self: *Self) Error!ast.Ast {
     const tok = try self.expect_next(.integer);
 
     const num = std.fmt.parseInt(u64, tok.str, 10) catch unreachable;
@@ -138,46 +138,51 @@ fn parse_number(self: *Parser) ParsingError!ast.Ast {
     return ast.Integer.init(num).ast();
 }
 
-fn expect_next(self: *Parser, kind: Token.TokenKind) ParsingError!Token {
-    const tok = self.lexer.next();
+fn expect_next(self: *Self, kind: TokenKind) Error!Token {
+    const tok = self.lexer.next() catch |err| {
+        self.lexer.loc.pprint();
+        std.debug.print(": Expected {} ", .{kind});
+        return handle_lexing_error(err);
+    };
 
-    if (tok == null) {
-        std.debug.print("Expected {} but found end of file\n", .{kind});
-        return ParsingError.UnexpectedToken;
+    if (tok.kind != kind) {
+        tok.loc.pprint();
+        std.debug.print(": Expected {} but found {} instead.\n", .{kind, tok.kind});
+        return Error.UnexpectedToken;
     }
 
-    if (tok.?.kind != kind) {
-        std.debug.print("Expected {} but found {} instead\n", .{kind, tok.?.kind});
-        return ParsingError.UnexpectedToken;
-    }
-
-    return tok.?;
+    return tok;
 }
 
-fn expect_next_of(self: *Parser, kinds: []Token.TokenKind) ParsingError!Token {
-    const tok = self.lexer.next();
-
-    if (tok == null) {
+fn expect_next_of(self: *Self, kinds: []TokenKind) Error!Token {
+    const tok = self.lexer.next() catch |err| {
+        self.lexer.loc.pprint();
         std.debug.print("Expected ", .{});
         for (kinds) |kind| {
             std.debug.print("{}, ", .{kind});
         }
-        std.debug.print("but found end of file", .{});
-        return ParsingError.UnexpectedToken;
-    }
-
-    const token = tok.?;
+        return handle_lexing_error(err);
+    };
 
     for (kinds) |kind| {
-        if (kind == token.kind) {
-            return token;
+        if (kind == tok.kind) {
+            return tok;
         }
     }
 
-    std.debug.print("Expected ", .{});
+    tok.loc.pprint();
+    std.debug.print(": Expected ", .{});
     for (kinds) |kind| {
         std.debug.print("{}, ", .{kind});
     }
-    std.debug.print("but found {} instead\n", .{token.kind});
-    return ParsingError.UnexpectedToken;
+    std.debug.print("but found {} instead\n", .{tok.kind});
+    return Error.UnexpectedToken;
+}
+
+fn handle_lexing_error(err: Lexer.Error) Error {
+    switch (err) {
+        Lexer.Error.EndOfFile => std.debug.print("found end of file instead.\n", .{}),
+        Lexer.Error.UnknownCharacter => std.debug.print("found unknown character instead.\n", .{}),
+    }
+    return Error.UnexpectedToken;
 }
