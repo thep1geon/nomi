@@ -44,6 +44,9 @@ pub const Lexer = struct {
 
     const Self = @This();
 
+    err_loc: Location,  // The location set if we encounter an error. Useful if we find an error
+                        // while peeking
+
     loc: Location,      // The Lexer also keeps a location. We will then copy this *updated* location
                         // to each new token we generate
 
@@ -57,10 +60,12 @@ pub const Lexer = struct {
             .start = 0,
             .ptr = 0,
             .loc = .{ .line = 1, .column = 1, .file = file_name },
+            .err_loc = undefined,
         };
     }
 
     pub fn next(self: *Self) Self.Error!Token {
+        errdefer self.set_err_loc();
         self.skip_whitespace();
 
         self.start = self.ptr;
@@ -118,13 +123,13 @@ pub const Lexer = struct {
                 // NOTE: We can move to a better system if this becomes too slow
                 // or we have too many keywords to check against.
                 if (std.mem.eql(u8, self.get_token_str(), "void")) {
-                    return self.make_token(.kw_void);
+                    break :swi self.make_token(.kw_void);
                 } else if (std.mem.eql(u8, self.get_token_str(), "return")) {
-                    return self.make_token(.kw_return);
+                    break :swi self.make_token(.kw_return);
                 } else if (std.mem.eql(u8, self.get_token_str(), "i32")) {
-                    return self.make_token(.kw_i32);
+                    break :swi self.make_token(.kw_i32);
                 } else if (std.mem.eql(u8, self.get_token_str(), "func")) {
-                    return self.make_token(.kw_func);
+                    break :swi self.make_token(.kw_func);
                 }
 
 
@@ -133,32 +138,33 @@ pub const Lexer = struct {
 
             else => {
                 std.debug.print("Unknown character!\n", .{});
-                return Self.Error.UnknownCharacter;
+                break :swi Self.Error.UnknownCharacter;
             },
         };
     }
 
     pub fn peek(self: *Self) Self.Error!Token {
+        errdefer self.set_err_loc();
         // Save the state of the lexer before fetching the next token
         const loc = self.loc;
         const ptr = self.ptr;
         // Restore the state of the lexer before the end of the function
-        defer self.ptr = ptr;
-        defer self.loc = loc;
+        defer {
+            self.ptr = ptr;
+            self.loc = loc;
+        }
 
         return self.next();
     }
 
     fn skip_whitespace(self: *Self) void {
         while (self.is_bound() and std.ascii.isWhitespace(self.src[self.ptr])) {
-            // Increment the 
             if (self.src[self.ptr] == '\n') {
                 self.loc.line += 1;
-                self.loc.column = 1;
-                self.ptr += 1;
-            } else {
-                self.advance();
+                self.loc.column = 0;
             }
+
+            self.advance();
         }
     }
 
@@ -177,5 +183,9 @@ pub const Lexer = struct {
 
     inline fn is_bound(self: *const Self) bool {
         return self.ptr < self.src.len;
+    }
+
+    inline fn set_err_loc(self: *Self) void {
+        self.err_loc = self.loc;
     }
 };

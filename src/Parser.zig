@@ -58,22 +58,22 @@ fn parse_func_decl(self: *Self) Error!ast.Ast {
 
 fn parse_stmt(self: *Self) Error!ast.Ast {
     const tok = self.lexer.peek() catch |err| {
-        self.lexer.loc.pprint();
+        self.lexer.err_loc.pprint();
         std.debug.print(": Expected statement, ", .{});
         return handle_lexing_error(err);
     };
 
-    if (tok.kind == .lcurly) {
-        return self.parse_block();
-    } else if (tok.kind == .kw_return) {
-        return self.parse_return();
+    switch (tok.kind) {
+        .lcurly => return self.parse_block(),
+        .kw_return => return self.parse_return(),
+        else => {
+            const expr = try self.parse_expr();
+
+            _ = try self.expect_next(.semicolon);
+
+            return expr;
+        },
     }
-
-    const expr = try self.parse_expr();
-
-    _ = try self.expect_next(.semicolon);
-
-    return expr;
 }
 
 fn parse_block(self: *Self) Error!ast.Ast {
@@ -82,12 +82,12 @@ fn parse_block(self: *Self) Error!ast.Ast {
 
     while (true) {
         const tok = self.lexer.peek() catch |err| {
-            self.lexer.loc.pprint();
+            self.lexer.err_loc.pprint();
             std.debug.print(": Expected closing brace, ", .{});
             return handle_lexing_error(err);
         };
 
-        if (tok.kind == .rcurly) break;
+        if (tok.kind == .rcurly) break; // We found the closing curly brace for the block
 
         const stmt = try self.parse_stmt();
         block.add_stmt(stmt);
@@ -108,19 +108,19 @@ fn parse_return(self: *Self) Error!ast.Ast {
 
 fn parse_expr(self: *Self) Error!ast.Ast {
     const tok = self.lexer.peek() catch |err| {
-        self.lexer.loc.pprint();
+        self.lexer.err_loc.pprint();
         std.debug.print(": Expected expression ", .{});
         return handle_lexing_error(err);
     };
 
     if (tok.kind == .ident) {
-        return self.parse_funcall();
+        return self.parse_func_call();
     }
 
     return self.parse_number();
 }
 
-fn parse_funcall(self: *Self) Error!ast.Ast {
+fn parse_func_call(self: *Self) Error!ast.Ast {
     const ident_tok = self.lexer.next() catch unreachable;
 
     _ = try self.expect_next(.lparen);
@@ -140,7 +140,7 @@ fn parse_number(self: *Self) Error!ast.Ast {
 
 fn expect_next(self: *Self, kind: TokenKind) Error!Token {
     const tok = self.lexer.next() catch |err| {
-        self.lexer.loc.pprint();
+        self.lexer.err_loc.pprint();
         std.debug.print(": Expected {} ", .{kind});
         return handle_lexing_error(err);
     };
@@ -156,7 +156,7 @@ fn expect_next(self: *Self, kind: TokenKind) Error!Token {
 
 fn expect_next_of(self: *Self, kinds: []TokenKind) Error!Token {
     const tok = self.lexer.next() catch |err| {
-        self.lexer.loc.pprint();
+        self.lexer.err_loc.pprint();
         std.debug.print("Expected ", .{});
         for (kinds) |kind| {
             std.debug.print("{}, ", .{kind});
