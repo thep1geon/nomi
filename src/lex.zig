@@ -69,12 +69,14 @@ pub const Lexer = struct {
         self.skip_whitespace();
 
         self.start = self.ptr;
+        
+        const loc = self.loc;
 
         if (!self.is_bound()) {
             return Self.Error.EndOfFile;
         }
 
-        return swi: switch (self.src[self.ptr]) {
+        switch (self.src[self.ptr]) {
             '0' ... '9' => {
                 self.advance();
 
@@ -82,32 +84,32 @@ pub const Lexer = struct {
                     self.advance();
                 }
 
-                break :swi self.make_token(.integer);
+                return self.make_token(.integer, loc);
             },
 
             '(' => {
                 self.advance();
-                break :swi self.make_token(.lparen);
+                return self.make_token(.lparen, loc);
             },
 
             ')' => {
                 self.advance();
-                break :swi self.make_token(.rparen);
+                return self.make_token(.rparen, loc);
             },
 
             '{' => {
                 self.advance();
-                break :swi self.make_token(.lcurly);
+                return self.make_token(.lcurly, loc);
             },
 
             '}' => {
                 self.advance();
-                break :swi self.make_token(.rcurly);
+                return self.make_token(.rcurly, loc);
             },
 
             ';' => {
                 self.advance();
-                break :swi self.make_token(.semicolon);
+                return self.make_token(.semicolon, loc);
             },
 
             // We've found an identifier
@@ -123,24 +125,26 @@ pub const Lexer = struct {
                 // NOTE: We can move to a better system if this becomes too slow
                 // or we have too many keywords to check against.
                 if (std.mem.eql(u8, self.get_token_str(), "void")) {
-                    break :swi self.make_token(.kw_void);
+                    return self.make_token(.kw_void, loc);
                 } else if (std.mem.eql(u8, self.get_token_str(), "return")) {
-                    break :swi self.make_token(.kw_return);
+                    return self.make_token(.kw_return, loc);
                 } else if (std.mem.eql(u8, self.get_token_str(), "i32")) {
-                    break :swi self.make_token(.kw_i32);
+                    return self.make_token(.kw_i32, loc);
                 } else if (std.mem.eql(u8, self.get_token_str(), "func")) {
-                    break :swi self.make_token(.kw_func);
+                    return self.make_token(.kw_func, loc);
                 }
 
 
-                break :swi self.make_token(.ident);
+                return self.make_token(.ident, loc);
             },
 
             else => {
                 std.debug.print("Unknown character!\n", .{});
-                break :swi Self.Error.UnknownCharacter;
+                return Self.Error.UnknownCharacter;
             },
-        };
+        }
+
+        unreachable;
     }
 
     pub fn peek(self: *Self) Self.Error!Token {
@@ -177,8 +181,8 @@ pub const Lexer = struct {
         return self.src[self.start .. self.ptr];
     }
 
-    inline fn make_token(self: *Self, kind: Token.Kind) Token {
-        return Token.init(kind, self.get_token_str(), self.loc);
+    inline fn make_token(self: *Self, kind: Token.Kind, loc: Location) Token {
+        return Token.init(kind, self.get_token_str(), loc);
     }
 
     inline fn is_bound(self: *const Self) bool {

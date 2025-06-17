@@ -120,11 +120,8 @@ pub const Program = struct {
 
     pub fn emit(self: *Program, writer: Writer) !void {
         _ = try writer.write("format ELF64\n");
-        _ = try writer.write("section '.text' executable\n\n");
-        _ = try writer.write("public exit\n");
-        _ = try writer.write("exit:\n");
-        _ = try writer.write("    mov        rax, 0x3c\n");
-        _ = try writer.write("    syscall\n\n");
+        _ = try writer.write("section '.text' executable\n");
+        _ = try writer.write("include 'lib/std.asm'\n\n");
         try self.func.emit(writer);
     }
 };
