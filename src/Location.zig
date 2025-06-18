@@ -18,6 +18,12 @@ pub fn init(line: u16, column: u8, file: []const u8) Self {
     };
 }
 
-pub fn pprint(self: Self) void {
-    std.debug.print("{s}:{d}:{d}", .{ self.file, self.line, self.column });
+pub fn format(
+    self: Self,
+    comptime fmt: []const u8,
+    options: std.fmt.FormatOptions,
+    writer: anytype,
+) !void {
+    _ = .{ fmt, options };
+    try writer.print("{s}:{d}:{d}", .{ self.file, self.line, self.column });
 }

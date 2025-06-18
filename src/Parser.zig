@@ -58,8 +58,7 @@ fn parse_func_decl(self: *Self) Error!ast.Ast {
 
 fn parse_stmt(self: *Self) Error!ast.Ast {
     const tok = self.lexer.peek() catch |err| {
-        self.lexer.err_loc.pprint();
-        std.debug.print(": Expected statement, ", .{});
+        std.debug.print("{}: Expected statement, ", .{self.lexer.err_loc});
         return handle_lexing_error(err);
     };
 
@@ -82,8 +81,7 @@ fn parse_block(self: *Self) Error!ast.Ast {
 
     while (true) {
         const tok = self.lexer.peek() catch |err| {
-            self.lexer.err_loc.pprint();
-            std.debug.print(": Expected closing brace, ", .{});
+            std.debug.print("{}: Expected closing brace, ", .{self.lexer.err_loc});
             return handle_lexing_error(err);
         };
 
@@ -108,8 +106,7 @@ fn parse_return(self: *Self) Error!ast.Ast {
 
 fn parse_expr(self: *Self) Error!ast.Ast {
     const tok = self.lexer.peek() catch |err| {
-        self.lexer.err_loc.pprint();
-        std.debug.print(": Expected expression ", .{});
+        std.debug.print("{}: Expected expression ", .{self.lexer.err_loc});
         return handle_lexing_error(err);
     };
 
@@ -140,14 +137,12 @@ fn parse_number(self: *Self) Error!ast.Ast {
 
 fn expect_next(self: *Self, kind: TokenKind) Error!Token {
     const tok = self.lexer.next() catch |err| {
-        self.lexer.err_loc.pprint();
-        std.debug.print(": Expected {} ", .{kind});
+        std.debug.print("{}: Expected {} ", .{self.lexer.err_loc, kind});
         return handle_lexing_error(err);
     };
 
     if (tok.kind != kind) {
-        tok.loc.pprint();
-        std.debug.print(": Expected {} but found {} instead.\n", .{kind, tok.kind});
+        std.debug.print("{}: Expected {} but found {} instead.\n", .{tok.loc, kind, tok.kind});
         return Error.UnexpectedToken;
     }
 
@@ -156,8 +151,7 @@ fn expect_next(self: *Self, kind: TokenKind) Error!Token {
 
 fn expect_next_of(self: *Self, kinds: []TokenKind) Error!Token {
     const tok = self.lexer.next() catch |err| {
-        self.lexer.err_loc.pprint();
-        std.debug.print("Expected ", .{});
+        std.debug.print("{}: Expected ", .{self.lexer.err_loc});
         for (kinds) |kind| {
             std.debug.print("{}, ", .{kind});
         }
@@ -170,8 +164,7 @@ fn expect_next_of(self: *Self, kinds: []TokenKind) Error!Token {
         }
     }
 
-    tok.loc.pprint();
-    std.debug.print(": Expected ", .{});
+    std.debug.print("{}: Expected ", .{tok.loc});
     for (kinds) |kind| {
         std.debug.print("{}, ", .{kind});
     }

@@ -3,6 +3,8 @@ const std = @import("std");
 const Location = @import("Location.zig");
 
 pub const Token = struct {
+    const Self = @This();
+
     pub const Kind = enum {
         kw_void,
         kw_return,
@@ -17,6 +19,28 @@ pub const Token = struct {
 
         ident,
         integer,
+
+        pub fn format(
+            self: Kind,
+            comptime fmt: []const u8,
+            options: std.fmt.FormatOptions,
+            writer: anytype,
+        ) !void {
+            _ = .{ fmt, options };
+            try writer.print("{s}", .{switch (self) {
+                .kw_void => "kw_void",
+                .kw_return => "kw_return",
+                .kw_i32 => "kw_i32",
+                .kw_func => "kw_func",
+                .lparen => "left paren",
+                .rparen => "right paren",
+                .lcurly => "left curly",
+                .rcurly => "right curly",
+                .semicolon => "semicolon",
+                .ident => "ident",
+                .integer => "integer",
+            }});
+        }
     };
 
     kind: Kind,
@@ -31,8 +55,14 @@ pub const Token = struct {
         };
     }
 
-    pub fn pprint(self: *const Token) void {
-        std.debug.print("{} : {s}\n", .{self.kind, self.str});
+    pub fn format(
+        self: Self,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        _ = .{ fmt, options };
+        try writer.print("{}: {{ {}, {s} }}", .{self.loc, self.kind, self.str});
     }
 };
 
@@ -60,7 +90,7 @@ pub const Lexer = struct {
             .start = 0,
             .ptr = 0,
             .loc = .{ .line = 1, .column = 1, .file = file_name },
-            .err_loc = undefined,
+            .err_loc = .{ .line = 1, .column = 1, .file = file_name },
         };
     }
 
