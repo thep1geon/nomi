@@ -29,17 +29,18 @@ language one day.
 
 ## TODO List
 
-- [] Better printing of compiler types (Location, ast, etc.)
-- [] Improve error system for compiler internals.
-- [] External functions from Nomi (written in FASM) (extern func sys_exit(i32) void;)
-- [] Start work on IR layer to abstract frontend and backend
-- [] Start work on a type system
-- [] Start work on user declared functions and calling user declared functions
-- [] More types ("Strings")
-- [] Variables
-- [] Functions which takes args
-- [] Hello, World! (No libc)
-- [] Semantic Analysis (Ensuring functions return, etc.)
+- [ ] Better printing of compiler types (~Location~, ast, ~Token~)
+    - [ ] Rework how the AST is represented internally
+- [ ] Improve error system for compiler internals.
+- [ ] Start work on IR layer to abstract frontend and backend
+- [ ] Semantic Analysis
+    - [ ] Type system
+- [ ] External functions from Nomi (written in FASM) (extern func sys_exit(i32) void;)
+- [ ] Start work on user declared functions and calling user declared functions
+- [ ] More types ("Strings")
+- [ ] Variables
+- [ ] Functions which takes args
+- [ ] Hello, World! (No libc)
 
 
 ## Usage
@@ -54,14 +55,14 @@ language one day.
 
 ```bash
     zig build # Build the compiler
-    ./zig-out/bin/nomic main.nom main.o # Run the compiler and save the object file in main.o
+    ./zig-out/bin/nomic main.nom main.o # Run the compiler and output as main.o
     ld main.o -o main # Link main.o to an ELF executable
     ./main # Run the newly compiled executable
     echo $? #To see the exit code of main
 ```
 
 There are plans to rework this process. But this is the simplest way of handling
-it so far.
+it so far. The compiler will output a straight executable eventually, don't worry
 
 ## What can the compiler do right now?
 
