@@ -4,17 +4,6 @@ const Parser = @import("Parser.zig");
 
 const cli = @import("cli.zig");
 
-// TODO: Improve error system for compiler internals.
-// TODO: External functions from Nomi (written in FASM) (extern func sys_exit(i32) void;)
-// TODO: Start work on IR layer to abstract frontend and backend
-// TODO: Start work on a type system
-// TODO: Start work on user declared functions and calling user declared functions
-// TODO: More types ("Strings")
-// TODO: Variables
-// TODO: Functions which takes args
-// TODO: Hello, World!
-// TODO: Semantic Analysis (Ensuring functions return, etc.)
-
 pub fn main() void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const alloc = gpa.allocator();

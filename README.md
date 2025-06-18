@@ -27,6 +27,20 @@ Though, there will not be any effort to make this cross-platform. This project i
 purely for learning and will jumpstart future ideas of writing an OS in this
 language one day.
 
+## ToDo List
+
+- [] Improve error system for compiler internals.
+- [] External functions from Nomi (written in FASM) (extern func sys_exit(i32) void;)
+- [] Start work on IR layer to abstract frontend and backend
+- [] Start work on a type system
+- [] Start work on user declared functions and calling user declared functions
+- [] More types ("Strings")
+- [] Variables
+- [] Functions which takes args
+- [] Hello, World! (No libc)
+- [] Semantic Analysis (Ensuring functions return, etc.)
+
+
 ## Usage
 
 ### Dependencies
