@@ -54,10 +54,10 @@ language one day.
 
 ```bash
     zig build # Build the compiler
-    ./zig-out/bin/nomic start.nom start.o # Run the compiler and save the object file in start.o
-    ld start.o -o start # Link start.o to an ELF executable
-    ./start # Run the newly compiled executable
-    echo $? #To see the exit code of start
+    ./zig-out/bin/nomic main.nom main.o # Run the compiler and save the object file in main.o
+    ld main.o -o main # Link main.o to an ELF executable
+    ./main # Run the newly compiled executable
+    echo $? #To see the exit code of main
 ```
 
 There are plans to rework this process. But this is the simplest way of handling
