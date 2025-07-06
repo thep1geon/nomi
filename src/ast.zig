@@ -1,5 +1,4 @@
 const std = @import("std");
-const Writer = std.fs.File.Writer;
 const Allocator = std.mem.Allocator;
 
 const pprinter = struct {
@@ -25,72 +24,30 @@ pub fn init(allocator: Allocator) void {
     alloc = allocator;
 }
 
-pub const Ast = struct {
-    pub const Kind = enum {
-        program,
-        func_decl,
-        block,
-        _return,
-        func_call,
-        integer,
-    };
-
-    kind: Kind,
-    ptr: *anyopaque,
-    pprint_fn: *const fn (ptr: *anyopaque) void,
-    deinit_fn: *const fn (ptr: *anyopaque) void,
-    emit_fn: *const fn (ptr: *anyopaque, writer: Writer) Writer.Error!void,
-
-    pub fn init(ast_ptr: anytype, kind: Kind) Ast {
-        const T = @TypeOf(ast_ptr);
-        std.debug.assert(@typeInfo(T) == .pointer);
-        std.debug.assert(@typeInfo(T).pointer.size == .one);
-        std.debug.assert(@typeInfo(@typeInfo(T).pointer.child) == .@"struct");
-
-        const gen = struct {
-            inline fn get_self(ptr: *anyopaque) T {
-                return @ptrCast(@alignCast(ptr));
-            }
-
-            pub fn pprint(ptr: *anyopaque) void {
-                get_self(ptr).pprint();
-            }
-
-            pub fn deinit(ptr: *anyopaque) void {
-                get_self(ptr).deinit();
-            }
-
-            pub fn emit(ptr: *anyopaque, writer: Writer) !void {
-                try get_self(ptr).emit(writer);
-            }
-        };
-
-        return .{
-            .kind = kind,
-            .ptr = ast_ptr,
-            .pprint_fn = gen.pprint,
-            .deinit_fn = gen.deinit,
-            .emit_fn = gen.emit,
-        };
-    }
+pub const Ast = union(enum) {
+    program: *Program,
+    func_decl: *FuncDecl,
+    block: *Block,
+    ret: *Return,
+    func_call: *FuncCall,
+    integer: *Integer,
 
     pub fn pprint(self: *const Ast) void {
-        self.pprint_fn(self.ptr);
+        switch (self.*) {
+            inline else => |case| case.pprint(),
+        }
     }
 
     pub fn deinit(self: *const Ast) void {
-        self.deinit_fn(self.ptr);
+        switch (self.*) {
+            inline else => |case| case.deinit(),
+        }
     }
 
-    pub fn emit(self: *const Ast, writer: Writer) !void {
-        try self.emit_fn(self.ptr, writer);
-    }
-
-    pub fn as(self: *const Ast, T: anytype) T {
-        std.debug.assert(@typeInfo(T) == .pointer);
-        std.debug.assert(@typeInfo(T).pointer.size == .one);
-        std.debug.assert(@typeInfo(@typeInfo(T).pointer.child) == .@"struct");
-        return @ptrCast(@alignCast(self.ptr));
+    pub fn emit(self: *const Ast, writer: anytype) anyerror!void {
+        switch (self.*) {
+            inline else => |case| try case.emit(writer),
+        }
     }
 };
 
@@ -110,15 +67,15 @@ pub const Program = struct {
     }
 
     pub fn ast(self: *Program) Ast {
-        return Ast.init(self, .program);
+        return .{ .program = self };
     }
 
     pub fn pprint(self: *Program) void {
         std.debug.print("Progam:\n", .{});
         pprinter.print(self.func, pprinter.ilevel + 1);
-    } 
+    }
 
-    pub fn emit(self: *Program, writer: Writer) !void {
+    pub fn emit(self: *Program, writer: anytype) anyerror!void {
         _ = try writer.write("format ELF64\n");
         _ = try writer.write("section '.text' executable\n");
         _ = try writer.write("include 'lib/std.asm'\n\n");
@@ -144,7 +101,7 @@ pub const FuncDecl = struct {
     }
 
     pub fn ast(self: *FuncDecl) Ast {
-        return Ast.init(self, .func_decl);
+        return .{ .func_decl = self };
     }
 
     pub fn pprint(self: *FuncDecl) void {
@@ -158,7 +115,7 @@ pub const FuncDecl = struct {
         pprinter.print(self.stmt, pprinter.ilevel + 2);
     }
 
-    pub fn emit(self: *FuncDecl, writer: Writer) !void {
+    pub fn emit(self: *FuncDecl, writer: anytype) anyerror!void {
         try writer.print("public {s}\n", .{self.name});
         try writer.print("{s}:\n", .{self.name});
         _ = try writer.write("    push       rbp\n");
@@ -190,7 +147,7 @@ pub const Block = struct {
     }
 
     pub fn ast(self: *Block) Ast {
-        return Ast.init(self, .block);
+        return .{ .block = self };
     }
 
     pub fn pprint(self: *Block) void {
@@ -200,7 +157,7 @@ pub const Block = struct {
         }
     }
 
-    pub fn emit(self: *Block, writer: Writer) !void {
+    pub fn emit(self: *Block, writer: anytype) anyerror!void {
         for (self.stmts.items) |stmt| {
             try stmt.emit(writer);
         }
@@ -223,7 +180,7 @@ pub const Return = struct {
     }
 
     pub fn ast(self: *Return) Ast {
-        return Ast.init(self, ._return);
+        return .{ .ret = self };
     }
 
     pub fn pprint(self: *Return) void {
@@ -235,13 +192,12 @@ pub const Return = struct {
         pprinter.print(self.expr, pprinter.ilevel + 2);
     }
 
-    pub fn emit(self: Return, writer: Writer) !void {
-        switch (self.expr.kind) {
-            .integer => {
-                const int = self.expr.as(*Integer);
+    pub fn emit(self: Return, writer: anytype) anyerror!void {
+        switch (self.expr) {
+            .integer => |int| {
                 try writer.print("    mov        rax, {d}\n", .{int.num});
             },
-            .func_call => {
+            .func_call => |_| {
                 try self.expr.emit(writer);
             },
             else => unreachable,
@@ -269,7 +225,7 @@ pub const FuncCall = struct {
     }
 
     pub fn ast(self: *FuncCall) Ast {
-        return Ast.init(self, .func_call);
+        return .{ .func_call = self };
     }
 
     pub fn pprint(self: *FuncCall) void {
@@ -287,13 +243,12 @@ pub const FuncCall = struct {
         pprinter.print(self.arg, pprinter.ilevel + 2);
     }
 
-    pub fn emit(self: FuncCall, writer: Writer) !void {
-        switch (self.arg.kind) {
-            .integer => {
-                const int = self.arg.as(*Integer);
+    pub fn emit(self: FuncCall, writer: anytype) anyerror!void {
+        switch (self.arg) {
+            .integer => |int| {
                 try writer.print("    mov        rdi, {d}\n", .{int.num});
             },
-            .func_call => {
+            .func_call => |_| {
                 try self.arg.emit(writer);
                 _ = try writer.write("    mov        rdi, rax\n");
             },
@@ -318,7 +273,7 @@ pub const Integer = struct {
     }
 
     pub fn ast(self: *Integer) Ast {
-        return Ast.init(self, .integer);
+        return .{ .integer = self };
     }
 
     pub fn pprint(self: *Integer) void {
@@ -327,8 +282,8 @@ pub const Integer = struct {
         std.debug.print("{d}\n", .{self.num});
     }
 
-    pub fn emit(self: *Integer, writer: Writer) !void {
-        _ = .{self, writer};
+    pub fn emit(self: *Integer, writer: anytype) anyerror!void {
+        _ = .{ self, writer };
         unreachable;
     }
 };

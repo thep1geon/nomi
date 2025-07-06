@@ -17,11 +17,7 @@ pub fn main() void {
         }
     }
 
-    var args = std.process.argsWithAllocator(alloc) catch |e| { // We have bigger issues if this fails
-        std.log.err("{any}", .{e});
-        std.log.err("Failed to allocate args or whatever", .{});
-        return;
-    };
+    var args = std.process.argsWithAllocator(alloc) catch unreachable; // We have bigger issues if this fails
     defer args.deinit();
 
     const opts = cli.parse_args(&args) catch |e| {
@@ -53,7 +49,7 @@ pub fn main() void {
 
     var parser = Parser.init(opts.input_path, src, &arena);
 
-    const ast = parser.parse()  catch |e| { // We have bigger issues if this fails
+    const ast = parser.parse() catch |e| { // We have bigger issues if this fails
         std.log.err("{any}", .{e});
         std.log.err("Failed to parse input file", .{});
         return;
