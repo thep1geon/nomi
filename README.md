@@ -38,8 +38,8 @@ language one day.
 
 ## TODO List
 
-- [ ] Better printing of compiler types (~Location~, ast, ~Token~)
-    - [ ] Rework how the AST is represented internally
+- [x] Better printing of compiler types (~Location~, ~ast~, ~Token~)
+    - [x] Rework how the AST is represented internally
 - [ ] Improve error system for compiler internals.
 - [ ] Start work on IR layer to abstract frontend and backend
 - [ ] Semantic Analysis

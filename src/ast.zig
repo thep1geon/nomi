@@ -4,18 +4,19 @@ const Allocator = std.mem.Allocator;
 const pprinter = struct {
     var ilevel: usize = 0;
 
-    pub fn indent(indent_level: usize) void {
+    pub fn indent(writer: anytype, indent_level: usize) anyerror!void {
         for (0..indent_level) |_| {
-            std.debug.print("  ", .{});
+            try writer.print("  ", .{});
         }
     }
 
-    pub fn print(ast: Ast, indent_level: usize) void {
+    pub fn print(writer: anytype, ast: Ast, indent_level: usize) anyerror!void {
         const level = ilevel;
         defer ilevel = level;
         ilevel = indent_level;
-        indent(indent_level);
-        ast.pprint();
+        try indent(writer, indent_level);
+
+        try writer.print("{}", .{ ast });
     }
 };
 
@@ -32,9 +33,10 @@ pub const Ast = union(enum) {
     func_call: *FuncCall,
     integer: *Integer,
 
-    pub fn pprint(self: *const Ast) void {
+    pub fn format(self: *const Ast, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype,) anyerror!void {
+        _ = .{ fmt, options };
         switch (self.*) {
-            inline else => |case| case.pprint(),
+            inline else => |case| try writer.print("{}", .{case}),
         }
     }
 
@@ -70,9 +72,10 @@ pub const Program = struct {
         return .{ .program = self };
     }
 
-    pub fn pprint(self: *Program) void {
-        std.debug.print("Progam:\n", .{});
-        pprinter.print(self.func, pprinter.ilevel + 1);
+    pub fn format(self: *const Program, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype,) anyerror!void {
+        _ = .{ fmt, options };
+        try writer.print("Progam:\n", .{});
+        try pprinter.print(writer, self.func, pprinter.ilevel + 1);
     }
 
     pub fn emit(self: *Program, writer: anytype) anyerror!void {
@@ -104,15 +107,16 @@ pub const FuncDecl = struct {
         return .{ .func_decl = self };
     }
 
-    pub fn pprint(self: *FuncDecl) void {
-        std.debug.print("FuncDecl:\n", .{});
-        pprinter.indent(pprinter.ilevel + 1);
-        std.debug.print("Name:\n", .{});
-        pprinter.indent(pprinter.ilevel + 2);
-        std.debug.print("{s}\n", .{self.name});
-        pprinter.indent(pprinter.ilevel + 1);
-        std.debug.print("Body:\n", .{});
-        pprinter.print(self.stmt, pprinter.ilevel + 2);
+    pub fn format(self: *const FuncDecl, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype,) anyerror!void {
+        _ = .{ fmt, options };
+        try writer.print("FuncDecl:\n", .{});
+        try pprinter.indent(writer, pprinter.ilevel + 1);
+        try writer.print("Name:\n", .{});
+        try pprinter.indent(writer, pprinter.ilevel + 2);
+        try writer.print("{s}\n", .{self.name});
+        try pprinter.indent(writer, pprinter.ilevel + 1);
+        try writer.print("Body:\n", .{});
+        try pprinter.print(writer, self.stmt, pprinter.ilevel + 2);
     }
 
     pub fn emit(self: *FuncDecl, writer: anytype) anyerror!void {
@@ -150,10 +154,11 @@ pub const Block = struct {
         return .{ .block = self };
     }
 
-    pub fn pprint(self: *Block) void {
-        std.debug.print("Block:\n", .{});
+    pub fn format(self: *const Block, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype,) anyerror!void {
+        _ = .{ fmt, options };
+        try writer.print("Block:\n", .{});
         for (self.stmts.items) |stmt| {
-            pprinter.print(stmt, pprinter.ilevel + 1);
+            try pprinter.print(writer, stmt, pprinter.ilevel + 1);
         }
     }
 
@@ -183,13 +188,14 @@ pub const Return = struct {
         return .{ .ret = self };
     }
 
-    pub fn pprint(self: *Return) void {
-        std.debug.print("Return:\n", .{});
+    pub fn format(self: *const Return, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype,) anyerror!void {
+        _ = .{ fmt, options };
+        try writer.print("Return:\n", .{});
 
-        pprinter.indent(pprinter.ilevel + 1);
-        std.debug.print("Expr:\n", .{});
+        try pprinter.indent(writer, pprinter.ilevel + 1);
+        try writer.print("Expr:\n", .{});
 
-        pprinter.print(self.expr, pprinter.ilevel + 2);
+        try pprinter.print(writer, self.expr, pprinter.ilevel + 2);
     }
 
     pub fn emit(self: Return, writer: anytype) anyerror!void {
@@ -228,19 +234,20 @@ pub const FuncCall = struct {
         return .{ .func_call = self };
     }
 
-    pub fn pprint(self: *FuncCall) void {
-        std.debug.print("FuncCall:\n", .{});
+    pub fn format(self: *const FuncCall, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype,) anyerror!void {
+        _ = .{ fmt, options };
+        try writer.print("FuncCall:\n", .{});
 
-        pprinter.indent(pprinter.ilevel + 1);
-        std.debug.print("Name:\n", .{});
+        try pprinter.indent(writer, pprinter.ilevel + 1);
+        try writer.print("Name:\n", .{});
 
-        pprinter.indent(pprinter.ilevel + 2);
-        std.debug.print("{s}\n", .{self.name});
+        try pprinter.indent(writer, pprinter.ilevel + 2);
+        try writer.print("{s}\n", .{self.name});
 
-        pprinter.indent(pprinter.ilevel + 1);
-        std.debug.print("Arg:\n", .{});
+        try pprinter.indent(writer, pprinter.ilevel + 1);
+        try writer.print("Arg:\n", .{});
 
-        pprinter.print(self.arg, pprinter.ilevel + 2);
+        try pprinter.print(writer, self.arg, pprinter.ilevel + 2);
     }
 
     pub fn emit(self: FuncCall, writer: anytype) anyerror!void {
@@ -276,10 +283,11 @@ pub const Integer = struct {
         return .{ .integer = self };
     }
 
-    pub fn pprint(self: *Integer) void {
-        std.debug.print("Integer:\n", .{});
-        pprinter.indent(pprinter.ilevel + 1);
-        std.debug.print("{d}\n", .{self.num});
+    pub fn format(self: *const Integer, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype,) anyerror!void {
+        _ = .{ fmt, options };
+        try writer.print("Integer:\n", .{});
+        try pprinter.indent(writer, pprinter.ilevel + 1);
+        try writer.print("{d}\n", .{self.num});
     }
 
     pub fn emit(self: *Integer, writer: anytype) anyerror!void {
