@@ -3,7 +3,7 @@ const std = @import("std");
 const Self = @This();
 
 // NOTE: This is may be too small. But I can't imagine a file having more than
-// 65k lines of code or more than 256 coloumns of code. In the event we need to
+// 65k lines of code or more than 256 columns of code. In the event we need to
 // increase these, it will be trivial to do so.
 
 line: u16,

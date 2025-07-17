@@ -1,66 +1,101 @@
 const std = @import("std");
-const ArgIterator = std.process.ArgIterator;
 
-const CLIError = error {
-    MissingInputFilePath,
-    TooManyOptions,
+const eql = std.mem.eql;
+const Allocator = std.mem.Allocator;
+
+const Error = error{
+    UnrecognizedOption,
+    MissingInfile,
 };
 
-const options = struct {
-    // More of an outline
-    const NomiOptionsTemplate = struct {
-        input_path: ?[]const u8 = null,
-        output_path: ?[]const u8 = null,
-    };
+const Option = struct {
+    const ParseFn = fn () void;
 
-    // Guarantees
-    const NomiOptions = struct {
-        input_path: []const u8 = "",
-        output_path: []const u8 = "",
-    };
+    short_opt: []const u8,
+    long_opt: ?[]const u8 = null,
 
-    pub fn finalize(opts: NomiOptionsTemplate) CLIError!NomiOptions {
-        var final_opts = NomiOptions{};
+    is_breaking: bool,
 
-        final_opts.input_path = opts.input_path orelse {
-            std.debug.print("Missing input file path.\n", .{});
-            return CLIError.MissingInputFilePath;
+    parse_fn: ParseFn,
+
+    inline fn init(is_breaking: bool, short: u8, long: ?[]const u8, parse_fn: ParseFn) Option {
+        return .{
+            .short_opt = &[_]u8{ '-', short },
+            .long_opt = if (long) |l| "--" ++ l else null,
+            .is_breaking = is_breaking,
+            .parse_fn = parse_fn,
         };
+    }
 
-        final_opts.output_path = opts.output_path orelse "output.o";
+    fn check_arg(opt: *const Option, arg: []const u8) bool {
+        if (opt.long_opt) |long| {
+            return eql(u8, long, arg) or eql(u8, opt.short_opt, arg);
+        }
 
-        return final_opts;
+        return eql(u8, opt.short_opt, arg);
+    }
+
+    fn attempt_parse_arg(opt: *const Option, arg: []const u8) bool {
+        if (opt.check_arg(arg)) {
+            opt.parse_fn();
+            if (opt.is_breaking) util.breaking_flags = true;
+            return opt.is_breaking;
+        }
+
+        return false;
     }
 };
 
-pub fn print_usage() void {
-    const help = 
-        \\Usage:
-        \\      nomic <input-file> [output-file]
-        \\      
-        \\      output-file defaults to "output.o" if nothing is provided
-        ;
+const util = struct {
+    var breaking_flags = false;
+    var executable: []const u8 = "";
 
-    std.debug.print("{s}\n", .{help});
-    return;
+    fn usage() void {
+        std.debug.print("Usage: {s} [options...] <infile>\n", .{executable});
+        return;
+    }
+};
+
+pub fn help_fn() void {
+    util.usage();
 }
 
-pub fn parse_args(args: *ArgIterator) CLIError!options.NomiOptions {
-    var opts = options.NomiOptionsTemplate{};
+pub fn output_fn() void {
+    std.debug.print("OUTPUT!!!\n", .{});
+}
 
-    // Skip the first arg, which is the compiler
-    _ = args.skip();
+pub fn parse_args() Error![]const u8 {
+    // FIXME: This is not cross platform. This code will not work on windows.
+    // But I don't think I care >:)
+    var args = std.process.args();
+    defer args.deinit();
 
-    while (args.next()) |arg| {
-        if (opts.input_path == null) {
-            opts.input_path = arg;
-        } else if (opts.input_path != null and opts.output_path == null) {
-            opts.output_path = arg;
+    var infile: []const u8 = "";
+
+    const help = Option.init(true, 'h', "help", help_fn);
+    const output = Option.init(true, 'o', "output", output_fn);
+
+    const options = [_]Option{ help, output };
+
+    // Grab the first arg which is always present
+    util.executable = args.next() orelse unreachable;
+
+    blk: while (args.next()) |arg| {
+        inline for (options) |option| {
+            // exit the whole while loop to stop parsing args
+            if (option.attempt_parse_arg(arg)) break :blk;
+        }
+
+        if (infile.len == 0) {
+            infile = arg;
         } else {
-            std.debug.print("Too many options.\n", .{});
-            return CLIError.TooManyOptions;
+            util.usage();
+            std.debug.print("Unrecognized option '{s}'\n", .{arg});
+            return Error.UnrecognizedOption;
         }
     }
 
-    return options.finalize(opts);
+    if (infile.len == 0 and !util.breaking_flags) return Error.MissingInfile;
+
+    return infile;
 }
