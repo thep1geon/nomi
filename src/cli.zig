@@ -1,53 +1,17 @@
 const std = @import("std");
 
-const eql = std.mem.eql;
+const mem = std.mem;
+
 const Allocator = std.mem.Allocator;
+const ArgIterator = std.process.ArgIterator;
 
 const Error = error{
     UnrecognizedOption,
     MissingInfile,
 };
 
-const Option = struct {
-    const ParseFn = fn () void;
-
-    short_opt: []const u8,
-    long_opt: ?[]const u8 = null,
-
-    is_breaking: bool,
-
-    parse_fn: ParseFn,
-
-    inline fn init(is_breaking: bool, short: u8, long: ?[]const u8, parse_fn: ParseFn) Option {
-        return .{
-            .short_opt = &[_]u8{ '-', short },
-            .long_opt = if (long) |l| "--" ++ l else null,
-            .is_breaking = is_breaking,
-            .parse_fn = parse_fn,
-        };
-    }
-
-    fn check_arg(opt: *const Option, arg: []const u8) bool {
-        if (opt.long_opt) |long| {
-            return eql(u8, long, arg) or eql(u8, opt.short_opt, arg);
-        }
-
-        return eql(u8, opt.short_opt, arg);
-    }
-
-    fn attempt_parse_arg(opt: *const Option, arg: []const u8) bool {
-        if (opt.check_arg(arg)) {
-            opt.parse_fn();
-            if (opt.is_breaking) util.breaking_flags = true;
-            return opt.is_breaking;
-        }
-
-        return false;
-    }
-};
-
 const util = struct {
-    var breaking_flags = false;
+    var breaking_flags = true;
     var executable: []const u8 = "";
 
     fn usage() void {
@@ -56,46 +20,45 @@ const util = struct {
     }
 };
 
-pub fn help_fn() void {
-    util.usage();
-}
+pub const Options = struct {
+    infile: []const u8 = "",
+    outfile: []const u8 = "output.o",
 
-pub fn output_fn() void {
-    std.debug.print("OUTPUT!!!\n", .{});
-}
+    early_exit: bool = false,
+};
 
-pub fn parse_args() Error![]const u8 {
+pub fn parse_args() Error!Options {
+    var opts = Options{};
+
     // FIXME: This is not cross platform. This code will not work on windows.
     // But I don't think I care >:)
     var args = std.process.args();
     defer args.deinit();
 
-    var infile: []const u8 = "";
-
-    const help = Option.init(true, 'h', "help", help_fn);
-    const output = Option.init(true, 'o', "output", output_fn);
-
-    const options = [_]Option{ help, output };
-
-    // Grab the first arg which is always present
+      // Grab the first arg which is always present
     util.executable = args.next() orelse unreachable;
 
     blk: while (args.next()) |arg| {
-        inline for (options) |option| {
-            // exit the whole while loop to stop parsing args
-            if (option.attempt_parse_arg(arg)) break :blk;
-        }
-
-        if (infile.len == 0) {
-            infile = arg;
+        if (mem.eql(u8, arg, "-h") or mem.eql(u8, arg, "--help")) {
+            util.usage();
+            break :blk;
+        } else if (mem.eql(u8, arg, "-o") or mem.eql(u8, arg, "--output")) {
+            // FIXME: Deal with actual error handling here
+            opts.outfile = args.next() orelse @panic("Expected outfile");
+        } else if (opts.infile.len == 0 and arg[0] != '-') {
+            opts.infile = arg;
         } else {
             util.usage();
             std.debug.print("Unrecognized option '{s}'\n", .{arg});
             return Error.UnrecognizedOption;
         }
+    } else {
+        util.breaking_flags = false;
     }
 
-    if (infile.len == 0 and !util.breaking_flags) return Error.MissingInfile;
+    opts.early_exit = util.breaking_flags;
 
-    return infile;
+    if (opts.infile.len == 0 and !util.breaking_flags) return Error.MissingInfile;
+
+    return opts;
 }
