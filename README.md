@@ -73,7 +73,7 @@ zig build # Build the compiler
 ### Using the Compiler
 
 ```bash
-./zig-out/bin/nomic main.nom main.o # Run the compiler and output as main.o
+./zig-out/bin/nomic main.nom -o main.o # Run the compiler and output as main.o
 ld main.o -o main # Link main.o to an ELF executable
 ./main # Run the newly compiled executable
 echo $? # to see the exit code of main
