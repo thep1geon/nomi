@@ -14,6 +14,8 @@ const util = struct {
     var breaking_flags = true;
     var executable: []const u8 = "";
 
+    // TODO: Include the different options, and their argument to the usage
+    // menu.
     fn usage() void {
         std.debug.print("Usage: {s} [options...] <infile>\n", .{executable});
         return;
@@ -35,7 +37,7 @@ pub fn parse_args() Error!Options {
     var args = std.process.args();
     defer args.deinit();
 
-      // Grab the first arg which is always present
+    // Grab the first arg which is always present.
     util.executable = args.next() orelse unreachable;
 
     blk: while (args.next()) |arg| {
@@ -43,7 +45,7 @@ pub fn parse_args() Error!Options {
             util.usage();
             break :blk;
         } else if (mem.eql(u8, arg, "-o") or mem.eql(u8, arg, "--output")) {
-            // FIXME: Deal with actual error handling here
+            // FIXME: Deal with actual error handling here.
             opts.outfile = args.next() orelse @panic("Expected outfile");
         } else if (opts.infile.len == 0 and arg[0] != '-') {
             opts.infile = arg;
