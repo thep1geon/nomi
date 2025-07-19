@@ -1,6 +1,10 @@
 const std = @import("std");
 
+const Allocator = std.mem.Allocator;
+
 const Location = @import("Location.zig");
+
+const MAX_FILE_SIZE: usize = 1024 * 1024;
 
 pub const Token = struct {
     const Self = @This();
@@ -81,17 +85,29 @@ pub const Lexer = struct {
                         // to each new token we generate
 
     src: []const u8,    // Source code
-    start: usize,       // Pointer to the first chacacter of the token
-    ptr: usize,         // The pointer to the last character of the token we are lexing
+    start: usize = 0,       // Pointer to the first chacacter of the token
+    ptr: usize = 0,         // The pointer to the last character of the token we are lexing
+    
+    alloc: Allocator, // We need to hold on to the allocator so we can
+                              // Properly free the source string
 
-    pub fn init(file_name: []const u8, src: []const u8) Lexer {
+
+    pub fn init(infile: []const u8, allocator: Allocator) !Lexer {
+        const src_file = try std.fs.cwd().openFile(infile, .{});
+        defer src_file.close(); // We don't need the file open after we read from it
+
+        const src = try src_file.readToEndAlloc(allocator, MAX_FILE_SIZE);
+
         return .{
+            .alloc = allocator,
             .src = src,
-            .start = 0,
-            .ptr = 0,
-            .loc = .{ .line = 1, .column = 1, .file = file_name },
-            .err_loc = .{ .line = 1, .column = 1, .file = file_name },
+            .loc = Location.init(1, 1, infile),
+            .err_loc = Location.init(1, 1, infile),
         };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.alloc.free(self.src);
     }
 
     pub fn next(self: *Self) Self.Error!Token {

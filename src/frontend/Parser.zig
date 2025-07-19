@@ -1,6 +1,5 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const ArenaAllocator = std.heap.ArenaAllocator;
 
 const ast = @import("ast.zig");
 
@@ -16,14 +15,13 @@ pub const Error = error{
 
 const Self = @This();
 
-lexer: Lexer,
+lexer: *Lexer,
 allocator: Allocator,
 
-pub fn init(file_name: []const u8, src: []const u8, arena: *ArenaAllocator) Self {
-    const alloc = arena.allocator();
+pub fn init(lexer: *Lexer, alloc: Allocator) Self {
     ast.init(alloc);
     return .{
-        .lexer = Lexer.init(file_name, src),
+        .lexer = lexer,
         .allocator = alloc,
     };
 }

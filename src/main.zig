@@ -1,6 +1,8 @@
 const std = @import("std");
 
-const Parser = @import("Parser.zig");
+const frontend = @import("frontend.zig");
+const Lexer = frontend.lex.Lexer;
+const Parser = frontend.Parser;
 
 const cli = @import("cli.zig");
 
@@ -28,12 +30,20 @@ pub fn main() !void {
     //
     // TODO: Make the lexer an argument passed into the parser
 
-    const src_file = std.fs.cwd().openFile(opts.infile, .{}) catch |e| {
+    var lexer = Lexer.init(opts.infile, alloc) catch |e| {
         std.log.err("{any}", .{e});
-        std.log.err("Failed to open the file {s}", .{opts.infile});
+        std.log.err("Failed to initialzie the lexer", .{});
         return;
     };
-    defer src_file.close();
+    defer lexer.deinit();
+
+    var parser = Parser.init(&lexer, arena.allocator());
+
+    const ast = parser.parse() catch |e| { // We have bigger issues if this fails
+        std.log.err("{any}", .{e});
+        std.log.err("Failed to parse input file", .{});
+        return;
+    };
 
     var out_file = std.fs.cwd().createFile(opts.outfile, .{}) catch |e| {
         std.log.err("{any}", .{e});
@@ -42,26 +52,13 @@ pub fn main() !void {
     };
     defer out_file.close();
 
-    const src = src_file.readToEndAlloc(alloc, 1024) catch |e| { // We have bigger issues if this fails
-        std.log.err("{any}", .{e});
-        std.log.err("Failed to read source file or whatever", .{});
-        return;
-    };
-    defer alloc.free(src);
-
-    var parser = Parser.init(opts.infile, src, &arena);
-
-    const ast = parser.parse() catch |e| { // We have bigger issues if this fails
-        std.log.err("{any}", .{e});
-        std.log.err("Failed to parse input file", .{});
-        return;
-    };
-
     ast.emit(out_file.writer()) catch |e| {
         std.log.err("{any}", .{e});
         std.log.err("Failed to emit assembly from ast", .{});
         return;
     };
+
+    ast.deinit();
 
     const fasm_proc = std.process.Child.run(.{
         .allocator = alloc,

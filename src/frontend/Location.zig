@@ -13,7 +13,7 @@ file: []const u8,
 pub fn init(line: u16, column: u8, file: []const u8) Self {
     return .{
         .line = line,
-        .coloumn = column,
+        .column = column,
         .file = file,
     };
 }
