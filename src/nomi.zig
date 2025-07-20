@@ -55,6 +55,15 @@ pub fn main() !void {
 
     // TODO: Roll our own custom assembler which assembles the IR directly
     // to machine code based on the selected backend
+    //
+    // We need to ditch this dependency for a builtin assembler.
+    //
+    // A few reasons for this:
+    //
+    // 1. The more dependencies we have the more points of failure exist.
+    // 2. We can more easily compile directly into machine code if we
+    //    have a builtin assmbler.
+    // 3. We have more control over the assmebly process.
     const fasm_proc = std.process.Child.run(.{
         .allocator = alloc,
         .argv = &[_][]const u8{
