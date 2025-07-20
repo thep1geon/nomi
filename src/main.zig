@@ -51,8 +51,10 @@ pub fn main() !void {
         return;
     };
 
-    ast.deinit();
+    ast.deinit(); // We no longer need the ast after this point
 
+    // TODO: Roll our own custom assembler which assembles the IR directly
+    // to machine code based on the selected backend
     const fasm_proc = std.process.Child.run(.{
         .allocator = alloc,
         .argv = &[_][]const u8{

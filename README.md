@@ -40,10 +40,10 @@ language one day.
 
 - [x] Better printing of compiler types (~Location~, ~ast~, ~Token~)
     - [x] Rework how the AST is represented internally
-- [ ] Improve error system for compiler internals.
-- [ ] Start work on IR layer to abstract frontend and backend
 - [ ] Semantic Analysis
     - [ ] Type system
+- [ ] Start work on IR layer to abstract frontend and backend
+- [ ] Improve error system for compiler internals.
 - [ ] External functions from Nomi (written in FASM) (extern func sys_exit(i32) void;)
 - [ ] Start work on user declared functions and calling user declared functions
 - [ ] More types ("Strings", specific integer types)
