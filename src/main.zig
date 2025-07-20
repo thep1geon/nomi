@@ -23,13 +23,6 @@ pub fn main() !void {
 
     if (opts.early_exit) return;
 
-    // Maybe just give the parser the file name and have it deal with.
-    // Maybe separate the parser and lexer a little bit. The parser should not
-    // have to know the name of the file the tokens it's parsing belongs to.
-    // That is only the jon of the lexer.
-    //
-    // TODO: Make the lexer an argument passed into the parser
-
     var lexer = Lexer.init(opts.infile, alloc) catch |e| {
         std.log.err("{any}", .{e});
         std.log.err("Failed to initialzie the lexer", .{});
