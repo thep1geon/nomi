@@ -1,10 +1,10 @@
 const std = @import("std");
 
+const cli = @import("cli.zig");
 const frontend = @import("frontend.zig");
+
 const Lexer = frontend.lex.Lexer;
 const Parser = frontend.Parser;
-
-const cli = @import("cli.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

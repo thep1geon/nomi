@@ -66,7 +66,7 @@ pub const Token = struct {
         writer: anytype,
     ) !void {
         _ = .{ fmt, options };
-        try writer.print("{}: {{ {}, {s} }}", .{self.loc, self.kind, self.str});
+        try writer.print("{}: {{ {}, {s} }}", .{ self.loc, self.kind, self.str });
     }
 };
 
@@ -78,19 +78,18 @@ pub const Lexer = struct {
 
     const Self = @This();
 
-    err_loc: Location,  // The location set if we encounter an error. Useful if we find an error
-                        // while peeking
+    err_loc: Location, // The location set if we encounter an error. Useful if we find an error
+    // while peeking
 
-    loc: Location,      // The Lexer also keeps a location. We will then copy this *updated* location
-                        // to each new token we generate
+    loc: Location, // The Lexer also keeps a location. We will then copy this *updated* location
+    // to each new token we generate
 
-    src: []const u8,    // Source code
-    start: usize = 0,       // Pointer to the first chacacter of the token
-    ptr: usize = 0,         // The pointer to the last character of the token we are lexing
-    
+    src: []const u8, // Source code
+    start: usize = 0, // Pointer to the first chacacter of the token
+    ptr: usize = 0, // The pointer to the last character of the token we are lexing
+
     alloc: Allocator, // We need to hold on to the allocator so we can
-                              // Properly free the source string
-
+    // Properly free the source string
 
     pub fn init(infile: []const u8, allocator: Allocator) !Lexer {
         const src_file = try std.fs.cwd().openFile(infile, .{});
@@ -115,7 +114,7 @@ pub const Lexer = struct {
         self.skip_whitespace();
 
         self.start = self.ptr;
-        
+
         const loc = self.loc;
 
         if (!self.is_bound()) {
@@ -123,7 +122,7 @@ pub const Lexer = struct {
         }
 
         switch (self.src[self.ptr]) {
-            '0' ... '9' => {
+            '0'...'9' => {
                 self.advance();
 
                 while (self.is_bound() and std.ascii.isDigit(self.src[self.ptr])) {
@@ -159,7 +158,7 @@ pub const Lexer = struct {
             },
 
             // We've found an identifier
-            'a' ... 'z', 'A' ... 'Z', '_' => {
+            'a'...'z', 'A'...'Z', '_' => {
                 self.advance();
 
                 while (self.is_bound() and std.ascii.isAlphanumeric(self.src[self.ptr])) {
@@ -179,7 +178,6 @@ pub const Lexer = struct {
                 } else if (std.mem.eql(u8, self.get_token_str(), "func")) {
                     return self.make_token(.kw_func, loc);
                 }
-
 
                 return self.make_token(.ident, loc);
             },
@@ -224,7 +222,7 @@ pub const Lexer = struct {
     }
 
     inline fn get_token_str(self: *Self) []const u8 {
-        return self.src[self.start .. self.ptr];
+        return self.src[self.start..self.ptr];
     }
 
     inline fn make_token(self: *Self, kind: Token.Kind, loc: Location) Token {

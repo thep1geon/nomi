@@ -16,7 +16,7 @@ const pprinter = struct {
         ilevel = indent_level;
         try indent(writer, indent_level);
 
-        try writer.print("{}", .{ ast });
+        try writer.print("{}", .{ast});
     }
 };
 
@@ -33,7 +33,12 @@ pub const Ast = union(enum) {
     func_call: *FuncCall,
     integer: *Integer,
 
-    pub fn format(self: *const Ast, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype,) anyerror!void {
+    pub fn format(
+        self: *const Ast,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) anyerror!void {
         _ = .{ fmt, options };
         switch (self.*) {
             inline else => |case| try writer.print("{}", .{case}),
@@ -72,7 +77,12 @@ pub const Program = struct {
         return .{ .program = self };
     }
 
-    pub fn format(self: *const Program, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype,) anyerror!void {
+    pub fn format(
+        self: *const Program,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) anyerror!void {
         _ = .{ fmt, options };
         try writer.print("Progam:\n", .{});
         try pprinter.print(writer, self.func, pprinter.ilevel + 1);
@@ -107,7 +117,12 @@ pub const FuncDecl = struct {
         return .{ .func_decl = self };
     }
 
-    pub fn format(self: *const FuncDecl, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype,) anyerror!void {
+    pub fn format(
+        self: *const FuncDecl,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) anyerror!void {
         _ = .{ fmt, options };
         try writer.print("FuncDecl:\n", .{});
         try pprinter.indent(writer, pprinter.ilevel + 1);
@@ -154,7 +169,12 @@ pub const Block = struct {
         return .{ .block = self };
     }
 
-    pub fn format(self: *const Block, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype,) anyerror!void {
+    pub fn format(
+        self: *const Block,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) anyerror!void {
         _ = .{ fmt, options };
         try writer.print("Block:\n", .{});
         for (self.stmts.items) |stmt| {
@@ -188,7 +208,12 @@ pub const Return = struct {
         return .{ .ret = self };
     }
 
-    pub fn format(self: *const Return, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype,) anyerror!void {
+    pub fn format(
+        self: *const Return,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) anyerror!void {
         _ = .{ fmt, options };
         try writer.print("Return:\n", .{});
 
@@ -234,7 +259,12 @@ pub const FuncCall = struct {
         return .{ .func_call = self };
     }
 
-    pub fn format(self: *const FuncCall, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype,) anyerror!void {
+    pub fn format(
+        self: *const FuncCall,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) anyerror!void {
         _ = .{ fmt, options };
         try writer.print("FuncCall:\n", .{});
 
@@ -283,7 +313,12 @@ pub const Integer = struct {
         return .{ .integer = self };
     }
 
-    pub fn format(self: *const Integer, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype,) anyerror!void {
+    pub fn format(
+        self: *const Integer,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) anyerror!void {
         _ = .{ fmt, options };
         try writer.print("Integer:\n", .{});
         try pprinter.indent(writer, pprinter.ilevel + 1);
