@@ -40,10 +40,8 @@ language one day.
 
 - [x] Better printing of compiler types (~Location~, ~ast~, ~Token~)
     - [x] Rework how the AST is represented internally
-- [ ] Semantic Analysis
-    - [ ] Type system
 - [ ] Start work on IR layer to abstract frontend and backend
-- [ ] Improve error system for compiler internals.
+- [ ] Start handrolling an assembler from IR
 - [ ] External functions from Nomi (written in FASM) (extern func sys_exit(i32) void;)
 - [ ] Start work on user declared functions and calling user declared functions
 - [ ] More types ("Strings", specific integer types)
@@ -52,6 +50,24 @@ language one day.
 - [ ] Hello, World! (No libc)
 - [ ] x86_64-Linux Backend
 - [ ] x86-Freestanding Backend
+
+## More Gradual Additions / Features 
+
+### NOTE:
+
+These features / additions will be implemented throughout the process of
+writing the compiler. They are more subjective and don't have a clear goal /
+indication of being done. These are more just things to keep in mind for myself
+as I continue to improve the compiler.
+
+It is important to keep in mind that this version of the compiler only needs to
+be able to compile Nomi programs which can compile Nomi programs. This is the
+bootstrap compiler, we still have to write one more after we compile the first
+Nomi compiler.
+
+- [ ] Improve error system for compiler internals.
+- [ ] Semantic Analysis
+    - [ ] Type System
 
 ## Getting Started
 
