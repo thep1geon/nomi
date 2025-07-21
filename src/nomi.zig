@@ -10,6 +10,7 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const alloc = gpa.allocator();
     var arena = std.heap.ArenaAllocator.init(alloc);
+    const arena_alloc = arena.allocator();
 
     defer {
         arena.deinit();
@@ -30,7 +31,7 @@ pub fn main() !void {
     };
     defer lexer.deinit();
 
-    var parser = Parser.init(&lexer, arena.allocator());
+    var parser = Parser.init(&lexer, arena_alloc);
 
     const ast = parser.parse() catch |e| { // We have bigger issues if this fails
         std.log.err("{any}", .{e});
@@ -51,7 +52,7 @@ pub fn main() !void {
         return;
     };
 
-    ast.deinit(); // We no longer need the ast after this point
+    ast.deinit(parser.allocator); // We no longer need the ast after this point
 
     // TODO: Roll our own custom assembler which assembles the IR directly
     // to machine code based on the selected backend

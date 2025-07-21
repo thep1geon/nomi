@@ -1,4 +1,5 @@
 const std = @import("std");
+
 const Allocator = std.mem.Allocator;
 const ast = @import("ast.zig");
 
@@ -18,7 +19,6 @@ lexer: *Lexer,
 allocator: Allocator,
 
 pub fn init(lexer: *Lexer, alloc: Allocator) Self {
-    ast.init(alloc);
     return .{
         .lexer = lexer,
         .allocator = alloc,
@@ -30,7 +30,7 @@ pub fn parse(self: *Self) Error!ast.Ast {
 }
 
 fn parse_program(self: *Self) Error!ast.Ast {
-    return ast.Program.init(try self.parse_decl()).ast();
+    return ast.Program.init(try self.parse_decl(), self.allocator).ast();
 }
 
 fn parse_decl(self: *Self) Error!ast.Ast {
@@ -45,12 +45,12 @@ fn parse_func_decl(self: *Self) Error!ast.Ast {
     _ = try self.expect_next(.lparen);
     _ = try self.expect_next(.rparen);
 
-    var possible_toks = [_]TokenKind{.kw_void, .kw_i32};
-    _ = try self.expect_next_of(possible_toks[0..]);
+    var toks = [_]TokenKind{.kw_void, .kw_i32};
+    _ = try self.expect_next_of(toks[0..]);
 
     const stmt = try self.parse_stmt();
 
-    return ast.FuncDecl.init(tok.str, stmt).ast();
+    return ast.FuncDecl.init(tok.str, stmt, self.allocator).ast();
 }
 
 fn parse_stmt(self: *Self) Error!ast.Ast {
@@ -73,7 +73,7 @@ fn parse_stmt(self: *Self) Error!ast.Ast {
 }
 
 fn parse_block(self: *Self) Error!ast.Ast {
-    var block = ast.Block.init();
+    var block = ast.Block.init(self.allocator);
     _ = self.lexer.next() catch unreachable; // Consume the curly brace as not to overflow the stack
 
     while (true) {
@@ -98,7 +98,7 @@ fn parse_return(self: *Self) Error!ast.Ast {
 
     _ = try self.expect_next(.semicolon);
 
-    return ast.Return.init(expr).ast();
+    return ast.Return.init(expr, self.allocator).ast();
 }
 
 fn parse_expr(self: *Self) Error!ast.Ast {
@@ -121,7 +121,7 @@ fn parse_func_call(self: *Self) Error!ast.Ast {
     const arg = try self.parse_expr();
     _ = try self.expect_next(.rparen);
 
-    return ast.FuncCall.init(ident_tok.str, arg).ast();
+    return ast.FuncCall.init(ident_tok.str, arg, self.allocator).ast();
 }
 
 fn parse_number(self: *Self) Error!ast.Ast {
@@ -129,7 +129,7 @@ fn parse_number(self: *Self) Error!ast.Ast {
 
     const num = std.fmt.parseInt(u64, tok.str, 10) catch unreachable;
 
-    return ast.Integer.init(num).ast();
+    return ast.Integer.init(num, self.allocator).ast();
 }
 
 fn expect_next(self: *Self, kind: TokenKind) Error!Token {

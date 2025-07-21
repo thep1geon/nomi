@@ -20,11 +20,6 @@ const pprinter = struct {
     }
 };
 
-var alloc: Allocator = undefined;
-pub fn init(allocator: Allocator) void {
-    alloc = allocator;
-}
-
 pub const Ast = union(enum) {
     program: *Program,
     func_decl: *FuncDecl,
@@ -45,9 +40,9 @@ pub const Ast = union(enum) {
         }
     }
 
-    pub fn deinit(self: *const Ast) void {
+    pub fn deinit(self: *const Ast, alloc: Allocator) void {
         switch (self.*) {
-            inline else => |case| case.deinit(),
+            inline else => |case| case.deinit(alloc),
         }
     }
 
@@ -61,15 +56,15 @@ pub const Ast = union(enum) {
 pub const Program = struct {
     func: Ast,
 
-    pub fn init(func: Ast) *Program {
+    pub fn init(func: Ast, alloc: Allocator) *Program {
         var prog = alloc.create(Program) catch @panic("Out of memory :/");
         prog.func = func;
 
         return prog;
     }
 
-    pub fn deinit(self: *Program) void {
-        self.func.deinit();
+    fn deinit(self: *Program, alloc: Allocator) void {
+        self.func.deinit(alloc);
         alloc.destroy(self);
     }
 
@@ -100,7 +95,7 @@ pub const FuncDecl = struct {
     name: []const u8,
     stmt: Ast,
 
-    pub fn init(name: []const u8, stmt: Ast) *FuncDecl {
+    pub fn init(name: []const u8, stmt: Ast, alloc: Allocator) *FuncDecl {
         var func_decl = alloc.create(FuncDecl) catch @panic("Out of memory :/");
         func_decl.name = name;
         func_decl.stmt = stmt;
@@ -108,8 +103,8 @@ pub const FuncDecl = struct {
         return func_decl;
     }
 
-    pub fn deinit(self: *FuncDecl) void {
-        self.stmt.deinit();
+    fn deinit(self: *FuncDecl, alloc: Allocator) void {
+        self.stmt.deinit(alloc);
         alloc.destroy(self);
     }
 
@@ -146,16 +141,16 @@ pub const FuncDecl = struct {
 pub const Block = struct {
     stmts: std.ArrayList(Ast),
 
-    pub fn init() *Block {
+    pub fn init(alloc: Allocator) *Block {
         var block = alloc.create(Block) catch @panic("Out of memory :/");
         block.stmts = std.ArrayList(Ast).init(alloc);
 
         return block;
     }
 
-    pub fn deinit(self: *Block) void {
+    fn deinit(self: *Block, alloc: Allocator) void {
         for (self.stmts.items) |stmt| {
-            stmt.deinit();
+            stmt.deinit(alloc);
         }
         self.stmts.deinit();
         alloc.destroy(self);
@@ -192,15 +187,15 @@ pub const Block = struct {
 pub const Return = struct {
     expr: Ast,
 
-    pub fn init(expr: Ast) *Return {
+    pub fn init(expr: Ast, alloc: Allocator) *Return {
         var ret = alloc.create(Return) catch @panic("Out of memory :/");
         ret.expr = expr;
 
         return ret;
     }
 
-    pub fn deinit(self: *Return) void {
-        self.expr.deinit();
+    fn deinit(self: *Return, alloc: Allocator) void {
+        self.expr.deinit(alloc);
         alloc.destroy(self);
     }
 
@@ -242,7 +237,7 @@ pub const FuncCall = struct {
     name: []const u8,
     arg: Ast,
 
-    pub fn init(name: []const u8, arg: Ast) *FuncCall {
+    pub fn init(name: []const u8, arg: Ast, alloc: Allocator) *FuncCall {
         var funcall = alloc.create(FuncCall) catch @panic("Out of memory :/");
         funcall.name = name;
         funcall.arg = arg;
@@ -250,8 +245,8 @@ pub const FuncCall = struct {
         return funcall;
     }
 
-    pub fn deinit(self: *FuncCall) void {
-        self.arg.deinit();
+    fn deinit(self: *FuncCall, alloc: Allocator) void {
+        self.arg.deinit(alloc);
         alloc.destroy(self);
     }
 
@@ -298,14 +293,14 @@ pub const FuncCall = struct {
 pub const Integer = struct {
     num: u64,
 
-    pub fn init(num: u64) *Integer {
+    pub fn init(num: u64, alloc: Allocator) *Integer {
         var integer = alloc.create(Integer) catch @panic("Out of memory :/");
         integer.num = num;
 
         return integer;
     }
 
-    pub fn deinit(self: *Integer) void {
+    fn deinit(self: *Integer, alloc: Allocator) void {
         alloc.destroy(self);
     }
 
