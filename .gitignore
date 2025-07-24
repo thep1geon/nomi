@@ -1,5 +1,4 @@
 .zig-cache/
 zig-out/
+*.o
 main
-main.o
-output.o

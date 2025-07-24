@@ -2,11 +2,12 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 const pprinter = struct {
+    const spaces = 2;
     var ilevel: usize = 0;
 
     pub fn indent(writer: anytype, indent_level: usize) anyerror!void {
         for (0..indent_level) |_| {
-            try writer.print("  ", .{});
+            try writer.print(" " ** 2, .{});
         }
     }
 
