@@ -1,6 +1,29 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+// TODO: Pretty much nuke all of this.
+//
+// We need a better system for generating
+// IR code than this implementation of the AST.
+//
+// After some reading of how Zig does it, I want to settle on something less
+// polymorphic. I want a polymorphic `Node` type but a concrete `AST` type that
+// we generate the IR from.
+//
+// The concrete AST type will hold the entire AST in itself. There will only be
+// one AST object for each AST. The nodes will be different, holding different
+// data and a tag.
+//
+// Like I mentioned earlier in this rationale, the main reason for doing this
+// was a lack of cohesion between the `ast` and IR types. There is no good way
+// to go from an AST to a list of IR in a clean manner with how we have things
+// setup now. I am really liking how the IR is represented linearly, so I do not
+// want to change that. I understand that this is just the first compiler of the
+// bootstrap process, so none of this code will be used once we get a working Nomi
+// compiler in Nomi, so I should not worry as much about it. But this is also a learning
+// experience, and I want to write good code regardless of knowing that it will
+// not be used after the Nomi compiler can compile itself.
+
 const pprinter = struct {
     const spaces = 2;
     var ilevel: usize = 0;
