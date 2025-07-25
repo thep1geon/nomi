@@ -66,6 +66,10 @@ pub const FuncDecl = struct {
         _ = .{ fmt, options };
         try writer.print("FuncDecl ({s}):", .{ self.name });
     }
+
+    pub fn init(name: []const u8) FuncDecl {
+        return .{ .name = name };
+    }
 };
 
 pub const Return = struct {
@@ -79,6 +83,10 @@ pub const Return = struct {
     ) anyerror!void {
         _ = .{ fmt, options };
         try writer.print("Return ({})", .{ self.expr });
+    }
+
+    pub fn init(expr: Expr) Return {
+        return .{ .expr = expr };
     }
 };
 
