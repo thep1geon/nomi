@@ -4,8 +4,6 @@ const cli = @import("cli.zig");
 
 const backend = @import("backend.zig");
 
-const ir = backend.ir;
-
 const frontend = @import("frontend.zig");
 
 const Lexer = frontend.lex.Lexer;
