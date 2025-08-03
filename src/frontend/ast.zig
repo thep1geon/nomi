@@ -1,6 +1,10 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+// TODO: Add better formatting with printing the AST
+// TODO: Update the parser to match the new representation of the AST
+// TODO: Begin work on ast -> ir AstGen
+
 // TODO: Pretty much nuke all of this.
 //
 // We need a better system for generating
@@ -86,7 +90,7 @@ pub const Program = struct {
     }
 
     pub fn add_decl(self: *Program, decl: Decl) void {
-        // TODO: Deal with this error more properly
+        // HACK: Deal with this error more properly
         self.declarations.append(decl) catch @panic("TODO: Deal with this error properly");
     }
 
@@ -194,7 +198,7 @@ pub const Block = struct {
     }
 
     pub fn add_stmt(self: *Block, stmt: Stmt) void {
-        // TODO: Deal with this error more properly
+        // HACK: Deal with this error more properly
         self.statements.append(stmt) catch @panic("TODO: Deal with this error properly");
     }
 
@@ -287,6 +291,15 @@ pub const FuncCall = struct {
 
 pub const Number = u64;
 
+
+// Quick aside:
+//
+// I have honestly never really used Zig's builtin testing functionality before,
+// but I like it. It is a lot easier than having to comment out the main function
+// and test our code there. I am not a fan of TDD (Test Driven Developement),
+// but this is a good method of testing after we implement the features.
+//
+// Aside over.
 
 const testing = std.testing;
 test "Ast - simple test" {
