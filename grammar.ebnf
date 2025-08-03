@@ -5,9 +5,12 @@ decl            = func_decl ;
 func_decl       = "func" ident "(" ")" ( "void" | "i32" ) stmt;
 
 stmt            = block
+                | return ;
                 | expr ";" ;
 
 block           = "{" stmt + "}" ;
+
+return          = "return" expr ";" ;
 
 expr            = func_call
                 | number ;
