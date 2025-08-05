@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+// TODO: Rework how we init the AST type
 // TODO: Add better formatting with printing the AST
 // TODO: Update the parser to match the new representation of the AST
 // TODO: Begin work on ast -> ir AstGen
@@ -37,20 +38,20 @@ const Allocator = std.mem.Allocator;
 // of the Ast type and instance is to keep track of everything after the AST has
 // been built. A single Ast type also lets us do semantic analysis on it, type checking,
 // easier conversion to IR, etc.
+
 pub const Ast = struct {
-    program: ?Program = null,
+    program: Program,
     alloc: Allocator,
 
-    pub fn init(allocator: Allocator) Ast {
+    pub fn init(program: Program, alloc: Allocator) Ast {
         return .{
-            .alloc = allocator,
+            .program = program,
+            .alloc = alloc,
         };
     }
 
     pub fn deinit(self: *Ast) void {
-        if (self.program) |*prog| {
-            prog.deinit(self);
-        }
+        self.program.deinit();
     }
 
     pub fn format(
@@ -59,33 +60,30 @@ pub const Ast = struct {
         _: std.fmt.FormatOptions,
         writer: anytype,
     ) !void {
-        if (self.program) |*prog| {
-            try writer.print("{}", .{ prog });
-        }
+        try writer.print("{}", .{self.program});
     }
-
 };
 
 const pretty_printer = struct {};
 
 // The actual node types that make up the AST
 //
-// When dealing with initialization and deinitialization, we pass around a const
-// pointer to the AST instance. This allows us to let the AST instance keep track
-// of everything and keeps everything owned by the AST.
+// When dealing with initialization and deinitialization, we pass around a
+// const pointer to the AST instance. This allows us to let the AST instance
+// keep track of everything and keeps everything owned by the AST.
 //
 // This keeps everything central and clean.
 
 pub const Program = struct {
     declarations: std.ArrayList(Decl),
 
-    pub fn init(ast: *const Ast) Program {
+    pub fn init(alloc: Allocator) Program {
         return .{
-            .declarations = .init(ast.alloc),
+            .declarations = .init(alloc),
         };
     }
 
-    pub fn deinit(self: *Program, _: *const Ast) void {
+    pub fn deinit(self: *Program) void {
         self.declarations.deinit();
     }
 
@@ -103,7 +101,7 @@ pub const Program = struct {
         try writer.print("Program:\n", .{});
         for (self.declarations.items) |decl| {
             // Indent Once
-            try writer.print("{}\n", .{ decl });
+            try writer.print("{}\n", .{decl});
         }
     }
 };
@@ -111,9 +109,9 @@ pub const Program = struct {
 pub const Decl = union(enum) {
     func_decl: FuncDecl,
 
-    pub fn deinit(self: *Decl, ast: *const Ast) void {
+    pub fn deinit(self: *Decl) void {
         switch (self.*) {
-            inline else => |decl| decl.deinit(ast),
+            inline else => |decl| decl.deinit(),
         }
     }
 
@@ -124,14 +122,14 @@ pub const Decl = union(enum) {
         writer: anytype,
     ) !void {
         switch (self.*) {
-            inline else => |decl| try writer.print("{}\n", .{ decl }),
+            inline else => |decl| try writer.print("{}\n", .{decl}),
         }
     }
 };
 
 pub const FuncDecl = struct {
     name: []const u8,
-    stmt: Stmt, 
+    stmt: Stmt,
 
     pub fn init(name: []const u8, stmt: Stmt) FuncDecl {
         return .{
@@ -140,7 +138,7 @@ pub const FuncDecl = struct {
         };
     }
 
-    pub fn deinit(_: *FuncDecl, _: *const Ast) void {}
+    pub fn deinit(_: *FuncDecl) void {}
 
     pub fn format(
         self: *const @This(),
@@ -152,11 +150,11 @@ pub const FuncDecl = struct {
         // Indent once
         try writer.print("Name:\n", .{});
         // Indent twice
-        try writer.print("{s}\n", .{ self.name });
+        try writer.print("{s}\n", .{self.name});
         // Indent once
         try writer.print("Body:\n", .{});
         // Indent Twice
-        try writer.print("{}\n", .{ self.stmt });
+        try writer.print("{}\n", .{self.stmt});
     }
 };
 
@@ -165,10 +163,9 @@ pub const Stmt = union(enum) {
     ret: Return,
     expr: Expr,
 
-
-    pub fn deinit(self: *Stmt, ast: *const Ast) void {
+    pub fn deinit(self: *Stmt) void {
         switch (self.*) {
-            inline else => |stmt| stmt.deinit(ast),
+            inline else => |stmt| stmt.deinit(),
         }
     }
 
@@ -179,13 +176,13 @@ pub const Stmt = union(enum) {
         writer: anytype,
     ) !void {
         switch (self.*) {
-            inline else => |stmt| try writer.print("{}\n", .{ stmt }),
+            inline else => |stmt| try writer.print("{}\n", .{stmt}),
         }
     }
 };
 
 pub const Block = struct {
-    statements: std.ArrayList(Stmt), 
+    statements: std.ArrayList(Stmt),
 
     pub fn init(ast: *const Ast) Block {
         return .{
@@ -193,7 +190,7 @@ pub const Block = struct {
         };
     }
 
-    pub fn deinit(self: *Block, _: *const Ast) void {
+    pub fn deinit(self: *Block) void {
         self.statements.deinit();
     }
 
@@ -211,11 +208,10 @@ pub const Block = struct {
         try writer.print("Block:\n", .{});
         for (self.statements.items) |stmt| {
             // Indent once
-            try writer.print("{}\n", .{ stmt });
+            try writer.print("{}\n", .{stmt});
         }
     }
 };
-
 
 pub const Return = struct {
     expr: ?Expr = null,
@@ -226,7 +222,7 @@ pub const Return = struct {
         };
     }
 
-    pub fn deinit(_: *Block, _: *const Ast) void {}
+    pub fn deinit(_: *Block) void {}
 
     pub fn format(
         self: *const @This(),
@@ -237,7 +233,7 @@ pub const Return = struct {
         try writer.print("Return:\n", .{});
         if (self.expr) |*expr| {
             // Indent once
-            try writer.print("{}\n", .{ expr });
+            try writer.print("{}\n", .{expr});
         }
     }
 };
@@ -246,10 +242,10 @@ pub const Expr = union(enum) {
     func_call: FuncCall,
     number: Number,
 
-    pub fn deinit(self: *Stmt, ast: *const Ast) void {
+    pub fn deinit(self: *Stmt) void {
         switch (self.*) {
             .number => |_| {},
-            inline else => |expr| expr.deinit(ast),
+            inline else => |expr| expr.deinit(),
         }
     }
 
@@ -260,8 +256,8 @@ pub const Expr = union(enum) {
         writer: anytype,
     ) !void {
         switch (self.*) {
-            .number => |num| try writer.print("{d}\n", .{ num }),
-            inline else => |expr| try writer.print("{}\n", .{ expr }),
+            .number => |num| try writer.print("{d}\n", .{num}),
+            inline else => |expr| try writer.print("{}\n", .{expr}),
         }
     }
 };
@@ -275,7 +271,7 @@ pub const FuncCall = struct {
         };
     }
 
-    pub fn deinit(_: *FuncCall, _: *const Ast) void {}
+    pub fn deinit(_: *FuncCall) void {}
 
     pub fn format(
         self: *const @This(),
@@ -285,12 +281,11 @@ pub const FuncCall = struct {
     ) !void {
         try writer.print("FuncCall:\n", .{});
         // Indent once
-        try writer.print("{s}\n", .{ self.name });
+        try writer.print("{s}\n", .{self.name});
     }
 };
 
 pub const Number = u64;
-
 
 // Quick aside:
 //
@@ -302,21 +297,16 @@ pub const Number = u64;
 // Aside over.
 
 const testing = std.testing;
-test "Ast - simple test" {
+test "Ast - Simple test" {
     var ast: Ast = .init(testing.allocator);
     defer ast.deinit();
 }
 
-test "Ast - Actual AST" {
-    var ast: Ast = .init(testing.allocator);
-    defer ast.deinit();
-
+test "Ast - Forming an AST" {
     const func = FuncDecl.init("foo", .{ .ret = .init(.{ .number = 42 }) });
 
     var prog = Program.init(&ast);
-    prog.add_decl(.{.func_decl = func });
+    prog.add_decl(.{ .func_decl = func });
 
-    ast.program = prog;
-
-    std.debug.print("{}\n", .{ ast });
+    std.debug.print("{}\n", .{prog});
 }
