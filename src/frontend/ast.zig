@@ -1,7 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-// TODO: Rework how we init the AST type
 // TODO: Add better formatting with printing the AST
 // TODO: Update the parser to match the new representation of the AST
 // TODO: Begin work on ast -> ir AstGen
@@ -32,21 +31,24 @@ const Allocator = std.mem.Allocator;
 // The structure to hold the entire Abstract Syntax Tree (AST, Ast). Only one instance of
 // this structure will exist for each AST, although I do not think there will be more than
 // one AST at once.
-
+//
+// Just a wrapper over the `Program` type right now, but could help us later
+// down the road if we decide to allocate all the different nodes on the heap
+// instead of the stack. It would then be important to keep track of revelent
+// information -- like the allocator used to allocate all the nodes when we go
+// to deinit everything.
+//
 // It might seem a little backwards, but we actually want to build up the actual
 // AST (starting at the Program) before passing it into the Ast instance. The point
 // of the Ast type and instance is to keep track of everything after the AST has
 // been built. A single Ast type also lets us do semantic analysis on it, type checking,
 // easier conversion to IR, etc.
-
 pub const Ast = struct {
     program: Program,
-    alloc: Allocator,
 
-    pub fn init(program: Program, alloc: Allocator) Ast {
+    pub fn init(program: Program) Ast {
         return .{
             .program = program,
-            .alloc = alloc,
         };
     }
 
@@ -64,7 +66,28 @@ pub const Ast = struct {
     }
 };
 
-const pretty_printer = struct {};
+// Now we need to work on a pretty printer for our new AST
+const pprinter = struct {
+    const spaces = 2;
+    var ilevel: u8 = 0; // We need to keep track of the indentation level
+    // A stack to keep track of previous indentation levels
+
+    pub fn indent(writer: anytype, add_levels: u8) !void {
+        for (0..ilevel+add_levels) |_| {
+            try writer.writeAll(" " ** spaces);
+        }
+    }
+
+    pub fn print(writer: anytype, node: AstNode, add_levels: u8) !void {
+        const level = ilevel;
+        defer ilevel = level;
+        ilevel += add_levels;
+
+        try indent(writer, 0);
+
+        try writer.print("{}", .{ node });
+    }
+};
 
 // The actual node types that make up the AST
 //
@@ -73,6 +96,26 @@ const pretty_printer = struct {};
 // keep track of everything and keeps everything owned by the AST.
 //
 // This keeps everything central and clean.
+
+// The over arching AST `Node` type which all nodes can be represented by.
+// A useful type to have when dealing with finicky things like pretty printing
+pub const AstNode = union(enum) {
+    program: Program,
+    decl: Decl,
+    stmt: Stmt,
+    expr: Expr,
+    
+    pub fn format(
+        self: *const @This(),
+        comptime _: []const u8,
+        _: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        switch (self.*) {
+            inline else => |node| try writer.print("{}", .{node}),
+        }
+    }
+};
 
 pub const Program = struct {
     declarations: std.ArrayList(Decl),
@@ -88,8 +131,8 @@ pub const Program = struct {
     }
 
     pub fn add_decl(self: *Program, decl: Decl) void {
-        // HACK: Deal with this error more properly
-        self.declarations.append(decl) catch @panic("TODO: Deal with this error properly");
+        // TODO: Deal with this error more properly
+        self.declarations.append(decl) catch unreachable;
     }
 
     pub fn format(
@@ -100,8 +143,7 @@ pub const Program = struct {
     ) !void {
         try writer.print("Program:\n", .{});
         for (self.declarations.items) |decl| {
-            // Indent Once
-            try writer.print("{}\n", .{decl});
+            try pprinter.print(writer, .{ .decl = decl }, 1);
         }
     }
 };
@@ -122,7 +164,7 @@ pub const Decl = union(enum) {
         writer: anytype,
     ) !void {
         switch (self.*) {
-            inline else => |decl| try writer.print("{}\n", .{decl}),
+            inline else => |decl| try writer.print("{}", .{decl}),
         }
     }
 };
@@ -147,14 +189,17 @@ pub const FuncDecl = struct {
         writer: anytype,
     ) !void {
         try writer.print("FuncDecl:\n", .{});
-        // Indent once
+
+        try pprinter.indent(writer, 1);
         try writer.print("Name:\n", .{});
-        // Indent twice
+
+        try pprinter.indent(writer, 2);
         try writer.print("{s}\n", .{self.name});
-        // Indent once
+
+        try pprinter.indent(writer, 1);
         try writer.print("Body:\n", .{});
-        // Indent Twice
-        try writer.print("{}\n", .{self.stmt});
+
+        try pprinter.print(writer, .{.stmt = self.stmt}, 2);
     }
 };
 
@@ -176,7 +221,7 @@ pub const Stmt = union(enum) {
         writer: anytype,
     ) !void {
         switch (self.*) {
-            inline else => |stmt| try writer.print("{}\n", .{stmt}),
+            inline else => |stmt| try writer.print("{}", .{stmt}),
         }
     }
 };
@@ -195,8 +240,8 @@ pub const Block = struct {
     }
 
     pub fn add_stmt(self: *Block, stmt: Stmt) void {
-        // HACK: Deal with this error more properly
-        self.statements.append(stmt) catch @panic("TODO: Deal with this error properly");
+        // TODO: Deal with this error more properly
+        self.statements.append(stmt) catch unreachable;
     }
 
     pub fn format(
@@ -207,8 +252,7 @@ pub const Block = struct {
     ) !void {
         try writer.print("Block:\n", .{});
         for (self.statements.items) |stmt| {
-            // Indent once
-            try writer.print("{}\n", .{stmt});
+            try pprinter.print(writer, .{ .stmt = stmt }, 1);
         }
     }
 };
@@ -231,9 +275,8 @@ pub const Return = struct {
         writer: anytype,
     ) !void {
         try writer.print("Return:\n", .{});
-        if (self.expr) |*expr| {
-            // Indent once
-            try writer.print("{}\n", .{expr});
+        if (self.expr) |expr| {
+            try pprinter.print(writer, .{ .expr = expr }, 1);
         }
     }
 };
@@ -256,8 +299,7 @@ pub const Expr = union(enum) {
         writer: anytype,
     ) !void {
         switch (self.*) {
-            .number => |num| try writer.print("{d}\n", .{num}),
-            inline else => |expr| try writer.print("{}\n", .{expr}),
+            inline else => |expr| try writer.print("{}", .{expr}),
         }
     }
 };
@@ -280,12 +322,33 @@ pub const FuncCall = struct {
         writer: anytype,
     ) !void {
         try writer.print("FuncCall:\n", .{});
-        // Indent once
+        try pprinter.indent(writer, 1);
         try writer.print("{s}\n", .{self.name});
     }
 };
 
-pub const Number = u64;
+pub const Number = struct {
+    value: u64,
+
+    pub fn init(value: u64) Number {
+        return .{
+            .value = value,
+        };
+    }
+
+    pub fn deinit(_: *Number) void {}
+
+    pub fn format(
+        self: *const @This(),
+        comptime _: []const u8,
+        _: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        try writer.print("Number:\n", .{});
+        try pprinter.indent(writer, 1);
+        try writer.print("{d}\n", .{self.value});
+    }
+};
 
 // Quick aside:
 //
@@ -298,15 +361,42 @@ pub const Number = u64;
 
 const testing = std.testing;
 test "Ast - Simple test" {
-    var ast: Ast = .init(testing.allocator);
+    const prog = Program.init(testing.allocator); // Jut a dummy progran node
+
+    var ast: Ast = .init(prog);
     defer ast.deinit();
 }
 
-test "Ast - Forming an AST" {
-    const func = FuncDecl.init("foo", .{ .ret = .init(.{ .number = 42 }) });
+test "Ast - Type casting up to AstNode" {
+    // Number
+    const num: Number = .init(27);
 
-    var prog = Program.init(&ast);
+    std.debug.print("\n{}", .{ num });
+
+    // Number -> Expr
+    const num_expr: Expr = .{ .number = num };
+
+    std.debug.print("{}", .{ num_expr });
+
+    // Number -> Expr -> AstNode
+    const num_ast_node: AstNode = .{ .expr = num_expr };
+
+    std.debug.print("{}", .{ num_ast_node });
+}
+
+test "Ast - Type casting AstNode" {
+    const num_ast_node: AstNode = .{ .expr = .{ .number = .init(42) }};
+
+    std.debug.print("\n{}", .{ num_ast_node });
+}
+
+test "Ast - Forming an AST" {
+    const func = FuncDecl.init("foo", .{ .ret = .init(.{ .number = .init(42) }) });
+
+    var prog = Program.init(testing.allocator);
     prog.add_decl(.{ .func_decl = func });
 
-    std.debug.print("{}\n", .{prog});
+    std.debug.print("\n{}", .{prog});
+
+    prog.deinit();
 }
