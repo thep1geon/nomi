@@ -1,7 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-// TODO: Add better formatting with printing the AST
 // TODO: Update the parser to match the new representation of the AST
 // TODO: Begin work on ast -> ir AstGen
 
@@ -397,6 +396,5 @@ test "Ast - Forming an AST" {
     prog.add_decl(.{ .func_decl = func });
 
     std.debug.print("\n{}", .{prog});
-
     prog.deinit();
 }
