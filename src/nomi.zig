@@ -9,6 +9,9 @@ const frontend = @import("frontend.zig");
 const Lexer = frontend.lex.Lexer;
 const Parser = frontend.Parser;
 
+
+// TODO: Begin work on ast -> ir AstGen
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const alloc = gpa.allocator();
@@ -36,31 +39,35 @@ pub fn main() !void {
 
     var parser = Parser.init(&lexer, arena_alloc);
 
-    const ast = parser.parse() catch |e| { // We have bigger issues if this fails
+    var ast = parser.parse() catch |e| { // We have bigger issues if this fails
         std.log.err("{any}", .{e});
         std.log.err("Failed to parse input file", .{});
         return;
     };
 
-    if (opts.verbose.ast) {
-        std.debug.print("{}\n", .{ast});
-    }
+    std.debug.print("{}\n", .{ast});
 
-    var out_file = std.fs.cwd().createFile(opts.outfile, .{}) catch |e| {
-        std.log.err("{any}", .{e});
-        std.log.err("Failed to open the file {s}", .{opts.outfile});
-        return;
-    };
-    defer out_file.close();
+    defer ast.deinit();
 
-    ast.emit(out_file.writer()) catch |e| {
-        std.log.err("{any}", .{e});
-        std.log.err("Failed to emit assembly from ast", .{});
-        return;
-    };
-
-    ast.deinit(parser.allocator); // We no longer need the ast after this point
-
+    // if (opts.verbose.ast) {
+    //     std.debug.print("{}\n", .{ast});
+    // }
+    //
+    // var out_file = std.fs.cwd().createFile(opts.outfile, .{}) catch |e| {
+    //     std.log.err("{any}", .{e});
+    //     std.log.err("Failed to open the file {s}", .{opts.outfile});
+    //     return;
+    // };
+    // defer out_file.close();
+    //
+    // ast.emit(out_file.writer()) catch |e| {
+    //     std.log.err("{any}", .{e});
+    //     std.log.err("Failed to emit assembly from ast", .{});
+    //     return;
+    // };
+    //
+    // ast.deinit(parser.allocator); // We no longer need the ast after this point
+    //
     // TODO: Roll our own custom assembler which assembles the IR directly
     // to machine code based on the selected backend
     //

@@ -1,9 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-// TODO: Update the parser to match the new representation of the AST
-// TODO: Begin work on ast -> ir AstGen
-
 // TODO: Pretty much nuke all of this.
 //
 // We need a better system for generating
@@ -228,9 +225,9 @@ pub const Stmt = union(enum) {
 pub const Block = struct {
     statements: std.ArrayList(Stmt),
 
-    pub fn init(ast: *const Ast) Block {
+    pub fn init(allocator: Allocator) Block {
         return .{
-            .statements = .init(ast.alloc),
+            .statements = .init(allocator),
         };
     }
 

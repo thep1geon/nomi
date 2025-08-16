@@ -1,6 +1,6 @@
 const std = @import("std");
-
 const Allocator = std.mem.Allocator;
+
 const ast = @import("ast.zig");
 
 const lex = @import("lex.zig");
@@ -26,18 +26,22 @@ pub fn init(lexer: *Lexer, alloc: Allocator) Self {
 }
 
 pub fn parse(self: *Self) Error!ast.Ast {
-    return self.parse_program();
+    const prog = try self.parse_program();
+    return ast.Ast.init(prog);
 }
 
-fn parse_program(self: *Self) Error!ast.Ast {
-    return ast.Program.init(try self.parse_decl(), self.allocator).ast();
+fn parse_program(self: *Self) Error!ast.Program {
+    var prog = ast.Program.init(self.allocator);
+    prog.add_decl(try self.parse_decl());
+
+    return prog;
 }
 
-fn parse_decl(self: *Self) Error!ast.Ast {
-    return self.parse_func_decl();
+fn parse_decl(self: *Self) Error!ast.Decl {
+    return .{ .func_decl = try self.parse_func_decl() };
 }
 
-fn parse_func_decl(self: *Self) Error!ast.Ast {
+fn parse_func_decl(self: *Self) Error!ast.FuncDecl {
     _ = try self.expect_next(.kw_func);
     
     const tok = try self.expect_next(.ident);
@@ -50,29 +54,29 @@ fn parse_func_decl(self: *Self) Error!ast.Ast {
 
     const stmt = try self.parse_stmt();
 
-    return ast.FuncDecl.init(tok.str, stmt, self.allocator).ast();
+    return ast.FuncDecl.init(tok.str, stmt);
 }
 
-fn parse_stmt(self: *Self) Error!ast.Ast {
+fn parse_stmt(self: *Self) Error!ast.Stmt {
     const tok = self.lexer.peek() catch |err| {
         std.debug.print("{}: Expected statement, ", .{self.lexer.err_loc});
         return handle_lexing_error(err);
     };
 
     switch (tok.kind) {
-        .lcurly => return self.parse_block(),
-        .kw_return => return self.parse_return(),
+        .lcurly => return .{ .block = try self.parse_block() },
+        .kw_return => return .{ .ret = try self.parse_return() },
         else => {
             const expr = try self.parse_expr();
 
             _ = try self.expect_next(.semicolon);
 
-            return expr;
+            return .{ .expr = expr };
         },
     }
 }
 
-fn parse_block(self: *Self) Error!ast.Ast {
+fn parse_block(self: *Self) Error!ast.Block {
     var block = ast.Block.init(self.allocator);
     _ = self.lexer.next() catch unreachable; // Consume the curly brace as not to overflow the stack
 
@@ -88,48 +92,47 @@ fn parse_block(self: *Self) Error!ast.Ast {
         block.add_stmt(stmt);
     }
 
-    return block.ast();
+    return block;
 }
 
-fn parse_return(self: *Self) Error!ast.Ast {
+fn parse_return(self: *Self) Error!ast.Return {
     _ = try self.expect_next(.kw_return);
 
     const expr = try self.parse_expr();
 
     _ = try self.expect_next(.semicolon);
 
-    return ast.Return.init(expr, self.allocator).ast();
+    return ast.Return.init(expr);
 }
 
-fn parse_expr(self: *Self) Error!ast.Ast {
+fn parse_expr(self: *Self) Error!ast.Expr {
     const tok = self.lexer.peek() catch |err| {
         std.debug.print("{}: Expected expression ", .{self.lexer.err_loc});
         return handle_lexing_error(err);
     };
 
     if (tok.kind == .ident) {
-        return self.parse_func_call();
+        return .{ .func_call = try self.parse_func_call() };
     }
 
-    return self.parse_number();
+    return .{ .number = try self.parse_number() };
 }
 
-fn parse_func_call(self: *Self) Error!ast.Ast {
+fn parse_func_call(self: *Self) Error!ast.FuncCall {
     const ident_tok = self.lexer.next() catch unreachable;
 
     _ = try self.expect_next(.lparen);
-    const arg = try self.parse_expr();
     _ = try self.expect_next(.rparen);
 
-    return ast.FuncCall.init(ident_tok.str, arg, self.allocator).ast();
+    return ast.FuncCall.init(ident_tok.str);
 }
 
-fn parse_number(self: *Self) Error!ast.Ast {
+fn parse_number(self: *Self) Error!ast.Number {
     const tok = try self.expect_next(.integer);
 
     const num = std.fmt.parseInt(u64, tok.str, 10) catch unreachable;
 
-    return ast.Integer.init(num, self.allocator).ast();
+    return ast.Number.init(num);
 }
 
 fn expect_next(self: *Self, kind: TokenKind) Error!Token {
