@@ -1,30 +1,30 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 
 //  FuncDecl main:
 //      Return 42
 
-pub const IrList = struct {
+pub const List = struct {
     list: std.ArrayList(Stmt),
 
-    pub fn init(alloc: std.mem.Allocator) IrList {
+    pub fn init(alloc: std.mem.Allocator) List {
         return .{
             .list = .init(alloc),
         };
     }
 
-    pub fn deinit(list: *IrList) void {
+    pub fn deinit(list: *List) void {
         list.list.deinit();
     }
 
-
     pub fn format(
-        self: *const IrList,
+        self: *const List,
         comptime fmt: []const u8,
         options: std.fmt.FormatOptions,
         writer: anytype,
     ) anyerror!void {
         _ = .{ fmt, options };
-        try writer.print("IrList:\n", .{});
+        try writer.print("List:\n", .{});
 
         for (self.list.items) |stmt| {
             switch (stmt) {
@@ -38,7 +38,6 @@ pub const IrList = struct {
 pub const Stmt = union(enum) {
     func_decl: FuncDecl,
     ret: Return,
-
 
     pub fn format(
         self: *const Stmt,
@@ -56,6 +55,9 @@ pub const Stmt = union(enum) {
 pub const FuncDecl = struct {
     name: []const u8,
 
+    pub fn init(allocator: Allocator, name: []const u8) FuncDecl {
+        return .{ .name = name, .scope = .init(allocator) };
+    }
 
     pub fn format(
         self: *const FuncDecl,
@@ -67,13 +69,14 @@ pub const FuncDecl = struct {
         try writer.print("FuncDecl ({s}):", .{ self.name });
     }
 
-    pub fn init(name: []const u8) FuncDecl {
-        return .{ .name = name };
-    }
 };
 
 pub const Return = struct {
     expr: Expr,
+
+    pub fn init(expr: Expr) Return {
+        return .{ .expr = expr };
+    }
 
     pub fn format(
         self: *const Return,
@@ -83,10 +86,6 @@ pub const Return = struct {
     ) anyerror!void {
         _ = .{ fmt, options };
         try writer.print("Return ({})", .{ self.expr });
-    }
-
-    pub fn init(expr: Expr) Return {
-        return .{ .expr = expr };
     }
 };
 

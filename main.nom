@@ -1,3 +1,1 @@
-func main() i32 {
-    return 69;
-}
+func main() i32 return 42;

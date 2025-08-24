@@ -142,9 +142,17 @@ pub const Decl = union(enum) {
     }
 };
 
+// TODO: Consider separating the idea of a function declaration's signature
+// from it's body.
+
 pub const FuncDecl = struct {
-    name: []const u8,
-    stmt: Stmt,
+    name: []const u8, // Part of the signature
+    // Other fields would include:
+    // Name (obviously)
+    // Args list
+    // Return type
+    // Exported or Extern (???)
+    stmt: Stmt, // TODO: Rename this to body
 
     pub fn init(name: []const u8, stmt: Stmt) FuncDecl {
         return .{
