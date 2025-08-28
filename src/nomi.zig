@@ -11,8 +11,7 @@ const ast_gen = frontend.ast_gen;
 const Lexer = frontend.lex.Lexer;
 const Parser = frontend.Parser;
 
-
-// TODO: Begin work on ast -> ir AstGen
+// TODO: Begin work on a backend for emitting x86_64 assembly from the IR
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -52,8 +51,11 @@ pub fn main() !void {
         std.debug.print("{}\n", .{ ast });
     }
 
-    // TODO: Handle this error in a better manner
-    var ir = ast_gen.gen(alloc, &ast) catch @panic("Failed to generate IR");
+    var ir = ast_gen.gen(alloc, &ast) catch |e| {
+        std.log.err("{any}", .{e});
+        std.log.err("Failed to generate IR from AST", .{});
+        return;
+    }
     defer ir.deinit();
 
     if (opts.verbose.ir) std.debug.print("{}\n", .{ ir });

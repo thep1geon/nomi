@@ -6,9 +6,6 @@ const ir = @import("../backend.zig").ir;
 const ast = @import("ast.zig");
 const Ast = ast.Ast;
 
-// TODO: Handle the errors properly
-
-
 // Function declaration - "func main() i32 { return 42; }"
 //     - Function signature - "main() i32"
 //         - Name of the function - "main"
@@ -41,9 +38,12 @@ pub fn gen(alloc: Allocator, ast_: *Ast) !ir.List {
 pub fn gen_func_decl(ir_list: *ir.List, func_decl: *const ast.FuncDecl) !void {
     try ir_list.list.append(.{.func_decl = .{ .name = func_decl.name }});
 
-    // TODO: Maybe think about having a gen_stmt function that does this for
-    // better code reusablity
-    switch (func_decl.stmt) {
+    // Generate the statment of the func_decl
+    try gen_stmt(ir_list, &func_decl.stmt);
+}
+
+pub fn gen_stmt(ir_list: *ir.List, stmt: *const ast.Stmt) !void {
+    switch (stmt.*) {
         .block => |*block| try gen_block(ir_list, block),
         .ret => |*ret| try gen_ret(ir_list, ret),
         .expr => |_| @panic("hrm"),

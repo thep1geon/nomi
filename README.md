@@ -40,7 +40,7 @@ language one day.
 
 - [x] Better printing of compiler types (~Location~, ~ast~, ~Token~)
     - [x] Rework how the AST is represented internally
-- [ ] Start work on IR layer to abstract frontend and backend
+- [x] Start work on IR layer to abstract frontend and backend
 - [ ] Start handrolling an assembler from IR
 - [ ] External functions from Nomi (written in FASM) (extern func sys_exit(i32) void;)
 - [ ] Start work on user declared functions and calling user declared functions
