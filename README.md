@@ -1,7 +1,5 @@
 # Nomi
 
-There will a pause in development of Nomi for the time being.
-
 ## The State of Nomi
 
 Right now, Nomi is in its very early stages of development, and everything is subject
