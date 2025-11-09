@@ -31,11 +31,9 @@ pub const Ast = struct {
 
     pub fn format(
         self: *const @This(),
-        comptime _: []const u8,
-        _: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) !void {
-        try writer.print("{}", .{self.program});
+        try writer.print("{f}", .{self.program});
     }
 };
 
@@ -45,20 +43,20 @@ const pprinter = struct {
     var ilevel: u8 = 0; // We need to keep track of the indentation level
     // A stack to keep track of previous indentation levels
 
-    pub fn indent(writer: anytype, add_levels: u8) !void {
+    pub fn indent(writer: *std.io.Writer, add_levels: u8) !void {
         for (0..ilevel+add_levels) |_| {
             try writer.writeAll(" " ** spaces);
         }
     }
 
-    pub fn print(writer: anytype, node: AstNode, add_levels: u8) !void {
+    pub fn print(writer: *std.io.Writer, node: AstNode, add_levels: u8) !void {
         const level = ilevel;
         defer ilevel = level;
         ilevel += add_levels;
 
         try indent(writer, 0);
 
-        try writer.print("{}", .{ node });
+        try writer.print("{f}", .{ node });
     }
 };
 
@@ -80,12 +78,10 @@ pub const AstNode = union(enum) {
     
     pub fn format(
         self: *const @This(),
-        comptime _: []const u8,
-        _: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) !void {
         switch (self.*) {
-            inline else => |node| try writer.print("{}", .{node}),
+            inline else => |node| try writer.print("{f}", .{node}),
         }
     }
 };
@@ -110,9 +106,7 @@ pub const Program = struct {
 
     pub fn format(
         self: *const @This(),
-        comptime _: []const u8,
-        _: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) !void {
         try writer.print("Program:\n", .{});
         for (self.declarations.items) |decl| {
@@ -132,12 +126,10 @@ pub const Decl = union(enum) {
 
     pub fn format(
         self: *const @This(),
-        comptime _: []const u8,
-        _: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) !void {
         switch (self.*) {
-            inline else => |decl| try writer.print("{}", .{decl}),
+            inline else => |decl| try writer.print("{f}", .{decl}),
         }
     }
 };
@@ -165,9 +157,7 @@ pub const FuncDecl = struct {
 
     pub fn format(
         self: *const @This(),
-        comptime _: []const u8,
-        _: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) !void {
         try writer.print("FuncDecl:\n", .{});
 
@@ -197,9 +187,7 @@ pub const Stmt = union(enum) {
 
     pub fn format(
         self: *const @This(),
-        comptime _: []const u8,
-        _: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) !void {
         switch (self.*) {
             inline else => |stmt| try writer.print("{}", .{stmt}),
@@ -227,9 +215,7 @@ pub const Block = struct {
 
     pub fn format(
         self: *const @This(),
-        comptime _: []const u8,
-        _: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) !void {
         try writer.print("Block:\n", .{});
         for (self.statements.items) |stmt| {
@@ -251,9 +237,7 @@ pub const Return = struct {
 
     pub fn format(
         self: *const @This(),
-        comptime _: []const u8,
-        _: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) !void {
         try writer.print("Return:\n", .{});
         if (self.expr) |expr| {
@@ -275,12 +259,10 @@ pub const Expr = union(enum) {
 
     pub fn format(
         self: *const @This(),
-        comptime _: []const u8,
-        _: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) !void {
         switch (self.*) {
-            inline else => |expr| try writer.print("{}", .{expr}),
+            inline else => |expr| try writer.print("{f}", .{expr}),
         }
     }
 };
@@ -298,9 +280,7 @@ pub const FuncCall = struct {
 
     pub fn format(
         self: *const @This(),
-        comptime _: []const u8,
-        _: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) !void {
         try writer.print("FuncCall:\n", .{});
         try pprinter.indent(writer, 1);
@@ -321,9 +301,7 @@ pub const Number = struct {
 
     pub fn format(
         self: *const @This(),
-        comptime _: []const u8,
-        _: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) !void {
         try writer.print("Number:\n", .{});
         try pprinter.indent(writer, 1);
@@ -352,23 +330,23 @@ test "Ast - Type casting up to AstNode" {
     // Number
     const num: Number = .init(27);
 
-    std.debug.print("\n{}", .{ num });
+    std.debug.print("\n{f}", .{ num });
 
     // Number -> Expr
     const num_expr: Expr = .{ .number = num };
 
-    std.debug.print("{}", .{ num_expr });
+    std.debug.print("{f}", .{ num_expr });
 
     // Number -> Expr -> AstNode
     const num_ast_node: AstNode = .{ .expr = num_expr };
 
-    std.debug.print("{}", .{ num_ast_node });
+    std.debug.print("{f}", .{ num_ast_node });
 }
 
 test "Ast - Type casting AstNode" {
     const num_ast_node: AstNode = .{ .expr = .{ .number = .init(42) }};
 
-    std.debug.print("\n{}", .{ num_ast_node });
+    std.debug.print("\n{f}", .{ num_ast_node });
 }
 
 test "Ast - Forming an AST" {
@@ -377,6 +355,6 @@ test "Ast - Forming an AST" {
     var prog = Program.init(testing.allocator);
     prog.add_decl(.{ .func_decl = func });
 
-    std.debug.print("\n{}", .{prog});
+    std.debug.print("\n{f}", .{prog});
     prog.deinit();
 }

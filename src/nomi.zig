@@ -11,6 +11,8 @@ const ast_gen = frontend.ast_gen;
 const Lexer = frontend.lex.Lexer;
 const Parser = frontend.Parser;
 
+// TODO: Move to Zig 0.15.1 !!
+
 // TODO: Begin work on a backend for emitting x86_64 assembly from the IR
 
 pub fn main() !void {
@@ -48,17 +50,17 @@ pub fn main() !void {
 
     if (opts.verbose.ast) {
         // TODO: Change this from std.debug.print to printing straight to stderr
-        std.debug.print("{}\n", .{ ast });
+        std.debug.print("{f}\n", .{ ast });
     }
 
     var ir = ast_gen.gen(alloc, &ast) catch |e| {
         std.log.err("{any}", .{e});
         std.log.err("Failed to generate IR from AST", .{});
         return;
-    }
+    };
     defer ir.deinit();
 
-    if (opts.verbose.ir) std.debug.print("{}\n", .{ ir });
+    if (opts.verbose.ir) std.debug.print("{f}\n", .{ ir });
 
     ast.deinit(); // We no longer need the ast after this point
 

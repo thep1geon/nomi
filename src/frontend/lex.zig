@@ -26,11 +26,8 @@ pub const Token = struct {
 
         pub fn format(
             self: Kind,
-            comptime fmt: []const u8,
-            options: std.fmt.FormatOptions,
-            writer: anytype,
+            writer: *std.io.Writer,
         ) !void {
-            _ = .{ fmt, options };
             try writer.print("{s}", .{switch (self) {
                 .kw_void => "kw_void",
                 .kw_return => "kw_return",
@@ -61,12 +58,9 @@ pub const Token = struct {
 
     pub fn format(
         self: Self,
-        comptime fmt: []const u8,
-        options: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) !void {
-        _ = .{ fmt, options };
-        try writer.print("{}: {{ {}, {s} }}", .{ self.loc, self.kind, self.str });
+        try writer.print("{f}: {{ {f}, {s} }}", .{ self.loc, self.kind, self.str });
     }
 };
 
@@ -79,17 +73,17 @@ pub const Lexer = struct {
     const Self = @This();
 
     err_loc: Location, // The location set if we encounter an error. Useful if we find an error
-    // while peeking
+                       // while peeking
 
     loc: Location, // The Lexer also keeps a location. We will then copy this *updated* location
-    // to each new token we generate
+                   // to each new token we generate
 
     src: []const u8, // Source code
     start: usize = 0, // Pointer to the first chacacter of the token
     ptr: usize = 0, // The pointer to the last character of the token we are lexing
 
     alloc: Allocator, // We need to hold on to the allocator so we can
-    // Properly free the source string
+                      // Properly free the source string
 
     pub fn init(infile: []const u8, allocator: Allocator) !Lexer {
         const src_file = try std.fs.cwd().openFile(infile, .{});

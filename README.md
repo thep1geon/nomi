@@ -38,6 +38,7 @@ language one day.
 
 ## TODO List
 
+- [ ] Rewrite the Nomi compiler in C
 - [x] Better printing of compiler types (~Location~, ~ast~, ~Token~)
     - [x] Rework how the AST is represented internally
 - [x] Start work on IR layer to abstract frontend and backend

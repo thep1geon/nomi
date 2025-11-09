@@ -5,31 +5,29 @@ const Allocator = std.mem.Allocator;
 //      Return 42
 
 pub const List = struct {
-    list: std.ArrayList(Stmt),
+    list: std.ArrayList(Stmt) = .{},
+    allocator: Allocator,
 
     pub fn init(alloc: std.mem.Allocator) List {
         return .{
-            .list = .init(alloc),
+            .allocator = alloc,
         };
     }
 
     pub fn deinit(list: *List) void {
-        list.list.deinit();
+        list.list.deinit(list.allocator);
     }
 
     pub fn format(
         self: *const List,
-        comptime fmt: []const u8,
-        options: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) anyerror!void {
-        _ = .{ fmt, options };
         try writer.print("List:\n", .{});
 
         for (self.list.items) |stmt| {
             switch (stmt) {
                 .func_decl => try writer.print("{}\n", .{ stmt }),
-                else => try writer.print("  {}\n", .{ stmt }),
+                else => try writer.print("  {f}\n", .{ stmt }),
             }
         }
     }
@@ -41,13 +39,10 @@ pub const Stmt = union(enum) {
 
     pub fn format(
         self: *const Stmt,
-        comptime fmt: []const u8,
-        options: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) anyerror!void {
-        _ = .{ fmt, options };
         switch (self.*) {
-            inline else => |stmt| try writer.print("{}", .{ stmt }),
+            inline else => |stmt| try writer.print("{f}", .{ stmt }),
         }
     }
 };
@@ -61,11 +56,8 @@ pub const FuncDecl = struct {
 
     pub fn format(
         self: *const FuncDecl,
-        comptime fmt: []const u8,
-        options: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) anyerror!void {
-        _ = .{ fmt, options };
         try writer.print("FuncDecl ({s}):", .{ self.name });
     }
 
@@ -80,12 +72,9 @@ pub const Return = struct {
 
     pub fn format(
         self: *const Return,
-        comptime fmt: []const u8,
-        options: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) anyerror!void {
-        _ = .{ fmt, options };
-        try writer.print("Return ({})", .{ self.expr });
+        try writer.print("Return ({f})", .{ self.expr });
     }
 };
 
@@ -94,11 +83,8 @@ pub const Expr = union(enum) {
 
     pub fn format(
         self: *const Expr,
-        comptime fmt: []const u8,
-        options: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) anyerror!void {
-        _ = .{ fmt, options };
         switch (self.*) {
             .integer => |data| try writer.print("{d}", .{ data }),
             // inline else => |expr| try writer.print("{}", .{ expr }),

@@ -20,10 +20,7 @@ pub fn init(line: u16, column: u8, file: []const u8) Self {
 
 pub fn format(
     self: Self,
-    comptime fmt: []const u8,
-    options: std.fmt.FormatOptions,
-    writer: anytype,
+    writer: *std.io.Writer,
 ) !void {
-    _ = .{ fmt, options };
     try writer.print("{s}:{d}:{d}", .{ self.file, self.line, self.column });
 }
