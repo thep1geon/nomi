@@ -67,8 +67,13 @@ typedef long double     f128;
 #define TODO(msg) fprintf(stderr, "%s:%d: todo: `%s'\n", _FILE, _LINE, (msg))
 #define UNIMPLEMENTED(msg) \
     fprintf(stderr, "%s:%d: unimplemented: `%s'\n", _FILE, _LINE, (msg)); \
-    exit(2)
+    abort();
+#define UNREACHABLE(msg) \
+    fprintf(stderr, "%s:%d: unreachable (yet you reached it anyway?): `%s'\n", _FILE, _LINE, (msg)); \
+    abort();
 #define _DEBUG(msg) fprintf(stderr, "%s:%d: debug: %s\n", _FILE, _LINE, (msg))
+
+#define UNUSED(x) (void)x
 
 /* Memory and array stuffs */
 
