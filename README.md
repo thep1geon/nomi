@@ -28,10 +28,10 @@ from C:
 *Note: the ones in bold are more important to me*
 
 Of course the first compiler for my language (which I have yet to name) will be 
-written in Zig. But there are definitely plans to helf-host my language and bootstrap
+written in C. But there are definitely plans to helf-host my language and bootstrap
 the compiler.
 
-Everything will be written from scratch only relying on the Zig standard library.
+Everything will be written from scratch only relying on the C standard library.
 Though, there will not be any effort to make this cross-platform. This project is
 purely for learning and will jumpstart future ideas of writing an OS in this
 language one day.
@@ -39,9 +39,9 @@ language one day.
 ## TODO List
 
 - [ ] Rewrite the Nomi compiler in C
-- [x] Better printing of compiler types (~Location~, ~ast~, ~Token~)
-    - [x] Rework how the AST is represented internally
-- [x] Start work on IR layer to abstract frontend and backend
+- [ ] Better printing of compiler types (~Location~, ~ast~, ~Token~)
+    - [ ] Rework how the AST is represented internally
+- [ ] Start work on IR layer to abstract frontend and backend
 - [ ] Start handrolling an assembler from IR
 - [ ] External functions from Nomi (written in FASM) (extern func sys_exit(i32) void;)
 - [ ] Start work on user declared functions and calling user declared functions
@@ -74,7 +74,7 @@ Nomi compiler.
 
 ### Dependencies
 
-- Zig v0.14.1
+- Any C compiler which can compile C99 code
 - Fasm  v1.73.32
 - ld linker v2.44.0
 
@@ -84,13 +84,13 @@ To get started with using the compiler, for what very little it can do right now
 you need to first build the compiler. You can build the compiler with this command:
 
 ```bash
-zig build # Build the compiler
+make # Build the compiler
 ```
 
 ### Using the Compiler
 
 ```bash
-./zig-out/bin/nomic main.nom -o main.o # Run the compiler and output as main.o
+./bin/nomic main.nom -o main.o # Run the compiler and output as main.o
 ld main.o -o main # Link main.o to an ELF executable
 ./main # Run the newly compiled executable
 echo $? # to see the exit code of main
