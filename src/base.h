@@ -75,11 +75,19 @@ typedef long double     f128;
 
 #define UNUSED(x) (void)x
 
+#define FORMATBOOL(x) (x)?"true":"false"
+
 /* Memory and array stuffs */
 
 #define ARRLENGTH(xs) (sizeof((xs))/sizeof(*(xs)))
 #define OFFSETOF(type, field) ((usize) &(((type*)0)->field))
 #define PARENTOF(ptr, type, field) (type *)((char *)(ptr) - OFFSETOF(type,field))
+
+/* Useful for allocating static memory or something like that, idk */
+
+#define KILOBYTES(n) (n * 1024)
+#define MEGABYTES(n) (KILOBYTES(n) * 1024)
+#define GIGABYTES(n) (MEGABYTES(n) * 1024)
 
 /*
  * ==================================================

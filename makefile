@@ -9,7 +9,7 @@ SRC_FILES := $(shell find $(SRC_DIR) -type f -name "*.c")
 # Generate object file paths based on source file paths
 OBJ_FILES := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC_FILES))
 
-CFLAGS := -Wall -Wextra -Werror -Wpedantic -pedantic -fsanitize=address -g --std=c99
+CFLAGS := -Wall -Wextra -Werror -fsanitize=address -g --std=c99
 LIBS := 
 
 all: $(TARGET)
