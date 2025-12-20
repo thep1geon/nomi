@@ -4,7 +4,9 @@
 #include "string.h"
 
 struct token {
-    enum token_kind {
+    struct string lexeme;
+
+    enum token_kind : u8 {
         TOK_LPAREN,
         TOK_RPAREN,
         TOK_LCURLY,
@@ -20,8 +22,6 @@ struct token {
 
         __token_kind_count,
     } kind;
-
-    struct string lexeme;
     /* @TASK(251217-163817): Introduce the notion of a location in a file for error messages */
 };
 
@@ -29,13 +29,15 @@ const char* token_kind_to_cstr(enum token_kind kind);
 void token_print(struct token token);
 
 struct lexer {
-    struct string src;
     struct token token;
+    struct string src;
     usize src_ptr;
     bool eoi;
 };
 
 struct lexer lex(struct string program);
 bool lexer_advance(struct lexer* lexer);
+
+/* @TASK(251219-170013): Add the ability to peek ahead into the next tokens */
 
 #endif  /*__LEX_H*/
