@@ -64,16 +64,19 @@ typedef long double     f128;
 
 /* Misc macros for debuging */
 
-#define TODO(msg) \
+#define TODO(msg) STATEMENT( \
     fprintf(stderr, "%s:%d: todo: `%s'\n", _FILE, _LINE, (msg)); \
-    abort()
-#define UNIMPLEMENTED(msg) \
+    abort(); \
+)
+#define UNIMPLEMENTED(msg) STATEMENT( \
     fprintf(stderr, "%s:%d: unimplemented: `%s'\n", _FILE, _LINE, (msg)); \
-    abort()
-#define UNREACHABLE(msg) \
+    abort(); \
+)
+#define UNREACHABLE(msg) STATEMENT( \
     fprintf(stderr, "%s:%d: unreachable (yet you reached it anyway?): `%s'\n", _FILE, _LINE, (msg)); \
-    abort()
-#define _DEBUG(msg) fprintf(stderr, "%s:%d: debug: %s\n", _FILE, _LINE, (msg))
+    abort(); \
+)
+#define _DEBUG(msg) STATEMENT( fprintf(stderr, "%s:%d: debug: %s\n", _FILE, _LINE, (msg)); )
 
 #define UNUSED(x) (void)x
 

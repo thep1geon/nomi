@@ -1,5 +1,3 @@
-#include <stdio.h>
-
 #define ENABLE_ASSERT
 #include "base.h"
 
@@ -22,7 +20,7 @@ struct node_link {
 
 struct node {
     union {
-        char* str;
+        const char* str;
         i64 number;
 
         struct node_link link;
@@ -58,6 +56,8 @@ struct node {
 
     u8 padding;
 };
+
+#define PARSE_ERROR UINT32_MAX
 
 struct node_list {
     struct node* at;
@@ -101,7 +101,7 @@ struct node node_create_number(i64 number) {
     return node;
 }
 
-struct node node_create_symbol(char* ptr, u16 length) {
+struct node node_create_symbol(const char* ptr, u16 length) {
     struct node node = {0};
     node.kind = NODE_SYMBOL;
     node.str = ptr;
@@ -205,6 +205,19 @@ struct parser {
     struct node_list nodes;
 };
 
+static inline struct token curr_token(struct parser* parser) {
+    return parser->lexer.token;
+}
+
+bool parser_eat(struct parser* parser) {
+    return lexer_advance(&parser->lexer);
+}
+
+bool parser_expect(struct parser* parser, enum token_kind kind) {
+    if (!parser_eat(parser)) return false;
+    return curr_token(parser).kind == kind;
+}
+
 u32 parser_add_node(struct parser* parser, struct node node) {
     u32 result = parser->nodes.length;
     node.id = result;
@@ -238,20 +251,134 @@ void parser_append_nodeid_to_link(struct parser* parser, u32 link_node, u32 node
     parser->nodes.at[link_node].link.next = linkid;
 }
 
+/* @TASK(251223-031434): Come up with an error scheme for parsing */
+
+u32 parse_statement(struct parser* parser);
+
+u32 parse_block(struct parser* parser) {
+    u32 block = parser_reserve_node(parser, NODE_BLOCK);
+
+    while (!parser->lexer.eof && curr_token(parser).kind != TOK_RCURLY) {
+        u32 statement = parse_statement(parser);
+        parser_append_nodeid_to_link(parser, block, statement);
+
+        parser_eat(parser);
+    }
+
+    if (curr_token(parser).kind == TOK_RCURLY) {
+        parser_eat(parser);
+    }
+
+    return block;
+}
+
+u32 parse_number(struct parser* parser) {
+    char buf[32] = {0};
+    struct token tok = curr_token(parser);
+    ASSERT(tok.kind == TOK_NUM);
+
+    ASSERT(tok.lexeme.length < 32);
+    memcpy(buf, tok.lexeme.cstr, tok.lexeme.length);
+    i64 num = atoll(buf);
+    return parser_add_node(parser, node_create_number(num));
+}
+
+u32 parse_expression(struct parser* parser) {
+    struct token tok = curr_token(parser);
+    if (tok.kind == TOK_NUM) {
+        return parse_number(parser);
+    }
+
+    TODO("The rest of them...");
+}
+
+u32 parse_return(struct parser* parser) {
+    u32 expression = parse_expression(parser);
+    if (!parser_expect(parser, TOK_SEMICOLON)) TODO("...");
+    /* error checking and shit */
+    return parser_add_node(parser, 
+                           node_create_return(expression));
+}
+
+u32 parse_statement(struct parser* parser) {
+    struct token tok = curr_token(parser);
+    if (tok.kind == TOK_LCURLY) {
+        parser_eat(parser);
+        return parse_block(parser);
+    } else if (tok.kind == TOK_RETURN) {
+        parser_eat(parser);
+        return parse_return(parser);
+    }
+
+    TODO("the rest of them...");
+}
+
+u32 parse_symbol(struct parser* parser) {
+    struct token token = curr_token(parser);
+    struct node node = node_create_symbol(token.lexeme.cstr, (u16)token.lexeme.length);
+    return parser_add_node(parser, node);
+}
+
+u32 parse_func_decl(struct parser* parser) {
+    u32 sym, body;
+
+    if (!parser_expect(parser, TOK_ID)) {
+        TODO("Handle this error");
+    }
+
+    sym = parse_symbol(parser);
+
+    if (!parser_expect(parser, TOK_LPAREN)) TODO("...");
+    if (!parser_expect(parser, TOK_RPAREN)) TODO("...");
+    if (!parser_expect(parser, TOK_I32))    TODO("...");
+
+    parser_eat(parser);
+
+    body = parse_statement(parser);
+
+    return parser_add_node(parser, node_create_func_decl(sym, body));
+}
+
+u32 parse_decl(struct parser* parser) {
+    if (curr_token(parser).kind == TOK_FUNC) {
+        return parse_func_decl(parser);
+    }
+
+    TODO("Other declarations");
+}
+
 struct ast parse(struct string src) {
     struct parser parser = {0};
     parser.lexer = lex(src);
+
+    u32 root = parser_reserve_node(&parser, NODE_ROOT);
+
+    if (!lexer_advance(&parser.lexer)) {
+        /* @TASK(251223-032647): Handle the case of an empty source */
+        TODO("Handle this error. See @Task(251223-032647)");
+    }
+
+    while (!parser.lexer.eof) {
+        parser_append_nodeid_to_link(&parser, root, parse_decl(&parser));
+    }
+
     return ast_from_node_list(parser.nodes);
 }
 
 i32 main(i32 argc, char** argv) {
     UNUSED(argc);
     UNUSED(argv);
-    const char program[] = "func main() i32 {\n"
-                           "   return 42;\n"
-                           "}";
+    const char src[] = "func foo() i32 {\n"
+                       "   return 6;\n"
+                       "}"
+                       "func bar() i32 {\n"
+                       "   return 7;\n"
+                       "}";
 
-    struct lexer lexer = lex(STRING_FROM_PARTS(program, ARRLENGTH(program)));
+
+    struct string program = STRING_FROM_PARTS(src, ARRLENGTH(src));
+
+    struct lexer lexer = lex(program);
 
     while (lexer_advance(&lexer)) {
         token_print(lexer.token);
@@ -259,34 +386,7 @@ i32 main(i32 argc, char** argv) {
 
     puts("end of input.");
 
-    struct parser parser = {0};
-    u32 root = parser_reserve_node(&parser, NODE_ROOT);
-    
-    u32 sym = parser_add_node(&parser, node_create_symbol("main", 4));
-
-    u32 body = parser_reserve_node(&parser, NODE_BLOCK);
-
-    parser_append_nodeid_to_link(&parser, body, parser_add_node(
-        &parser,
-        node_create_return(parser_add_node(&parser, node_create_number(42)))
-    ));
-
-    parser_append_nodeid_to_link(&parser, body, parser_add_node(
-        &parser,
-        node_create_return(parser_add_node(&parser, node_create_number(6)))
-    ));
-
-    parser_append_nodeid_to_link(&parser, body, parser_add_node(
-        &parser,
-        node_create_return(parser_add_node(&parser, node_create_number(7)))
-    ));
-
-    u32 func_decl = parser_add_node(&parser, node_create_func_decl(sym, body));
-
-    parser_append_nodeid_to_link(&parser, root, func_decl);
-    parser_append_nodeid_to_link(&parser, root, func_decl);
-
-    struct ast ast = ast_from_node_list(parser.nodes);
+    struct ast ast = parse(program);
 
     ast_pretty_print(&ast);
 

@@ -48,7 +48,7 @@ struct lexer lex(struct string program) {
         .token = {{0}, 0},
         .src = program,
         .src_ptr = 0,
-        .eoi = 0,
+        .eof = false,
     };
 }
 
@@ -147,12 +147,12 @@ static inline void make_num(struct lexer* lexer) {
 bool lexer_advance(struct lexer* lexer) {
     char ch;
 
-    if (lexer->eoi) return false;
+    if (lexer->eof) return false;
 
     skip_whitespace(lexer);
 
     if (peek_char(lexer) == '\0') {
-        lexer->eoi = true;
+        lexer->eof = true;
         return false;
     }
 

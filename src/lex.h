@@ -32,12 +32,13 @@ struct lexer {
     struct token token;
     struct string src;
     usize src_ptr;
-    bool eoi;
+    bool eof;
 };
 
 struct lexer lex(struct string program);
 bool lexer_advance(struct lexer* lexer);
 
 /* @TASK(251219-170013): Add the ability to peek ahead into the next tokens */
+/* @TASK(251223-031459): Come up with an error scheme for the lexing of the source */
 
 #endif  /*__LEX_H*/
