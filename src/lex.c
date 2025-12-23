@@ -44,9 +44,9 @@ void token_print(struct token token) {
 }
 
 struct lexer lex(struct string program) {
-    return (struct lexer) {
+    return (struct lexer){
+        .token = {{0}, 0},
         .src = program,
-        .token = (struct token){0},
         .src_ptr = 0,
         .eoi = 0,
     };
