@@ -123,7 +123,7 @@ static inline void make_id(struct lexer* lexer) {
         len++;
     }
     /* 
-     * @TASK(251217-174254): See about simplifying this. It seems silly to have
+     * TASK(251217-174254): See about simplifying this. It seems silly to have
      * to roll back the lexer just to push it forward again in the `make_lexem'
      * function
      * */
