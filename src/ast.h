@@ -47,8 +47,6 @@ struct node {
     u8 padding;
 };
 
-#define PARSE_ERROR UINT32_MAX
-
 struct node_list {
     struct node* at;
     usize length;
