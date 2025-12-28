@@ -2,6 +2,8 @@
 
 Implement enough code generation for main.nom TASK(251217-162901)
 
-Location: /home/magic/Programming/projects/nomi/src/main.c:20
-Priority: 50
-Status: CLOSED
+## Location: /home/magic/Programming/projects/nomi/src/main.c:20
+
+## Priority: 50
+
+## Status: CLOSED
